@@ -11,9 +11,16 @@ from worker.ingest.base import Adapter
 from worker.models import Post
 
 FEEDS = {
+    # RSS is built for programmatic consumption — every feed here is an
+    # official syndication endpoint. Each one degrades independently.
     "cnbc-markets": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",
+    "cnbc-earnings": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135",
     "marketwatch-top": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+    "marketwatch-pulse": "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",
     "yahoo-finance": "https://finance.yahoo.com/news/rssindex",
+    "seekingalpha-news": "https://seekingalpha.com/market_currents.xml",
+    "benzinga": "https://www.benzinga.com/feed",
+    "investing-news": "https://www.investing.com/rss/news_25.rss",
 }
 
 
