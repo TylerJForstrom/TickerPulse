@@ -15,7 +15,10 @@ name: pipeline
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 min (GitHub may throttle to ~real cadence)
+    # Offset minutes: the :00/:15/:30/:45 marks are heavily contended on
+    # GitHub's shared scheduler and get throttled or dropped; odd minutes
+    # fire far more reliably.
+    - cron: "4,19,34,49 * * * *"
   push:
     paths: [".github/workflows/pipeline.yml"]   # editing this file = test run
   workflow_dispatch:
@@ -29,12 +32,17 @@ concurrency:
   group: pipeline
   cancel-in-progress: false
 
+env:
+  # Node 20 actions are force-migrated to Node 24 on 2026-06-16; opt in
+  # early so the cutover can't silently break the cron.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check live mode
         id: live
@@ -48,7 +56,7 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.live.outputs.enabled == 'true'
         with:
           python-version: "3.12"

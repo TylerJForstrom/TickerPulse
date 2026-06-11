@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+import traceback
 from datetime import datetime, timezone
 
 from worker.config import DATA_DIR, settings
@@ -30,6 +31,18 @@ from worker.metrics.graph import compute_graph
 from worker.metrics.trends import bucket_series, compute_ticker_trends, market_mood
 from worker.nlp.sentiment import score_posts
 from worker.nlp.tickers import tag_posts
+
+
+def optional_stage(name: str, fn, fallback):
+    """Run an analytics stage that must never kill the core pipeline.
+    Freshness of trends/prices/meta beats completeness of extras: on
+    failure, log the full traceback and return the fallback payload."""
+    try:
+        return fn()
+    except Exception:
+        print(f"  [stage-failed] {name} — continuing without it")
+        traceback.print_exc()
+        return fallback
 
 
 def pgsink_load_meta(conn, key: str):
@@ -122,7 +135,11 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
     print("[5/6] market data + correlation + flag backtest")
     from worker.metrics.backtest import replay_flags, score_events, summarize, HORIZONS
 
-    flag_events = replay_flags(posts, window_hours=settings.window_hours)
+    flag_events = optional_stage(
+        "backtest:replay",
+        lambda: replay_flags(posts, window_hours=settings.window_hours),
+        [],
+    )
     event_tickers = {e["ticker"] for e in flag_events}
     price_tickers = list(dict.fromkeys([*top_tickers, *sorted(event_tickers)]))
 
@@ -131,17 +148,34 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         prices = {t: synthetic_prices(t) for t in price_tickers}
     else:
         prices = fetch_prices(price_tickers, days=30, interval="1h")
-    correlations = {t: compute_correlation(t, buckets[t], prices[t]) for t in top_tickers}
 
-    score_events(flag_events, prices)
-    flag_events.sort(key=lambda e: e["flagged_at"], reverse=True)
-    backtest_payload = {
-        "summary": summarize(flag_events),
-        "events": flag_events[:60],
-        "params": {"window_hours": settings.window_hours,
-                   "breakout_floor": 1.5, "horizons": list(HORIZONS)},
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
+    def _safe_correlation(t):
+        return optional_stage(
+            f"correlation:{t}",
+            lambda: compute_correlation(t, buckets[t], prices[t]),
+            {"ticker": t, "pearson_r": 0.0, "best_lag_hours": 0, "best_lag_r": 0.0,
+             "by_lag": {}, "readout": "Correlation unavailable for this window.",
+             "series": [], "updated_at": datetime.now(timezone.utc).isoformat()},
+        )
+
+    correlations = {t: _safe_correlation(t) for t in top_tickers}
+
+    def _scored_backtest():
+        score_events(flag_events, prices)
+        flag_events.sort(key=lambda e: e["flagged_at"], reverse=True)
+        return {
+            "summary": summarize(flag_events),
+            "events": flag_events[:60],
+            "params": {"window_hours": settings.window_hours,
+                       "breakout_floor": 1.5, "horizons": list(HORIZONS)},
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    backtest_payload = optional_stage(
+        "backtest:score", _scored_backtest,
+        {"summary": None, "events": [], "params": {},
+         "updated_at": datetime.now(timezone.utc).isoformat()},
+    )
     print(f"  {len(flag_events)} historical flags replayed")
 
     topics_payload = {"topics": [], "points": [], "backend": "skipped"}
@@ -149,7 +183,10 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         print("[6/6] topic clustering")
         from worker.nlp.topics import compute_topics
 
-        topics_payload = compute_topics(posts)
+        topics_payload = optional_stage(
+            "topics", lambda: compute_topics(posts),
+            {"topics": [], "points": [], "backend": "failed"},
+        )
         print(f"  {len(topics_payload['topics'])} topics over "
               f"{len(topics_payload['points'])} posts ({topics_payload['backend']})")
 
@@ -197,16 +234,24 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
             for a in alerts
         ], set())
         # Notify on fresh alerts before overwriting the previous snapshot.
-        from worker.notify import send_discord_alerts
+        def _notify():
+            from worker.notify import send_discord_alerts
 
-        prev = pgsink_load_meta(conn, "alerts") or {}
-        sent = send_discord_alerts(alerts, prev.get("alerts", []))
-        if sent:
-            print(f"  discord: sent {sent} new alerts")
+            prev = pgsink_load_meta(conn, "alerts") or {}
+            sent = send_discord_alerts(alerts, prev.get("alerts", []))
+            if sent:
+                print(f"  discord: sent {sent} new alerts")
 
-        pruned = pgsink.prune(conn, days=30)
-        if any(pruned.values()):
-            print(f"  pruned: {pruned}")
+        optional_stage("notify", _notify, None)
+        conn.rollback()  # clear any aborted tx so later writes can't be poisoned
+
+        def _prune():
+            pruned = pgsink.prune(conn, days=30)
+            if any(pruned.values()):
+                print(f"  pruned: {pruned}")
+
+        optional_stage("prune", _prune, None)
+        conn.rollback()
 
         pgsink.upsert_meta(conn, "meta", meta)
         pgsink.upsert_meta(conn, "trending", trending_payload)
