@@ -73,6 +73,23 @@ describe("getData", () => {
     expect(data.source).toBe("static");
     expect(api.currentMode()).toBe("demo");
   });
+
+  it("a 404 on one key falls back per-call WITHOUT demoting the session", async () => {
+    const fetchMock = vi.fn((url) => {
+      if (url === "/api/meta") return ok({ mode: "live" });
+      if (url === "/api/backtest") return fail(404); // key not written yet
+      if (url === "/api/trending") return ok({ live: true });
+      return ok({ source: "static" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const api = await freshApi();
+    await api.resolveMode();
+    const bt = await api.getData("backtest");
+    expect(bt.source).toBe("static");        // this call fell back
+    expect(api.currentMode()).toBe("live");  // session stays live
+    const trending = await api.getData("trending");
+    expect(trending.live).toBe(true);        // later live calls unaffected
+  });
 });
 
 describe("getTicker", () => {

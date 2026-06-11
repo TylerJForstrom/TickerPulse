@@ -41,9 +41,14 @@ export async function getData(name) {
   const m = await resolveMode();
   if (m === "live") {
     try {
-      return await fetchJson(`/api/${name}`);
+      const res = await fetch(`/api/${name}`);
+      if (res.ok) return res.json();
+      // 404 = this one key hasn't been written yet (e.g. a brand-new
+      // payload before the next pipeline tick) — fall back for this call
+      // only. Anything else means live is unhealthy; degrade the session.
+      if (res.status !== 404) mode = "demo";
     } catch {
-      mode = "demo"; // live flaked mid-session — degrade gracefully
+      mode = "demo"; // network-level failure — degrade gracefully
     }
   }
   return fetchJson(DEMO_PATHS[name] || `/data/${name}.json`);
