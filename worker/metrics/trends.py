@@ -17,6 +17,7 @@ import math
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
+from worker.metrics.weights import post_weight, weighted_sentiment
 from worker.models import Post
 from worker.nlp.tickers import ticker_name, ticker_sector
 
@@ -120,8 +121,9 @@ def compute_ticker_trends(
 
         sentiments = Counter(p.sentiment for p in window if p.sentiment)
         bull, bear, neutral = sentiments["bull"], sentiments["bear"], sentiments["neutral"]
-        scored = [p.sentiment_score for p in window if p.sentiment_score is not None]
-        sent_avg = sum(scored) / len(scored) if scored else 0.0
+        # Influence-weighted: platform reach × engagement, so a syndicated
+        # headline or viral thread moves the needle more than a drive-by post.
+        sent_avg = weighted_sentiment(window) or 0.0
 
         platforms = Counter(p.platform for p in window)
         origin = min(window, key=lambda p: p.timestamp).platform if window else None
@@ -214,14 +216,15 @@ def bucket_series(
 
 
 def market_mood(posts: list[Post], window_hours: int = 24, now: datetime | None = None) -> dict:
-    """Engagement-weighted bull/bear index across all chatter, 0–100."""
+    """Influence-weighted bull/bear index across all chatter, 0–100.
+    Weights = platform reach × engagement (see metrics/weights.py)."""
     now = now or datetime.now(timezone.utc)
     win_start = now - timedelta(hours=window_hours)
     window = [p for p in posts if p.timestamp >= win_start and p.sentiment_score is not None]
     if not window:
         return {"index": 50.0, "label": "neutral", "bull": 0, "bear": 0, "neutral": 0, "posts": 0}
-    wsum = sum(math.log1p(p.engagement) + 1.0 for p in window)
-    weighted = sum((math.log1p(p.engagement) + 1.0) * p.sentiment_score for p in window) / wsum
+    wsum = sum(post_weight(p) for p in window)
+    weighted = sum(post_weight(p) * p.sentiment_score for p in window) / wsum
     index = round((weighted + 1) / 2 * 100, 1)
     label = ("extreme greed" if index >= 75 else "greed" if index >= 60 else
              "neutral" if index > 40 else "fear" if index > 25 else "extreme fear")

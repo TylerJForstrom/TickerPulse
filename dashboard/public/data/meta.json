@@ -1,1 +1,1 @@
-{"mode":"demo","updated_at":"2026-06-11T14:57:55.795298+00:00","posts_processed":5919,"sources":["file"],"sentiment_backend":"lexicon","embed_backend":"tfidf","window_hours":24,"refresh_minutes":null,"mood":{"index":57.5,"label":"neutral","bull":441,"bear":198,"neutral":285,"posts":924}}
+{"mode":"demo","updated_at":"2026-06-11T15:59:29.452835+00:00","posts_processed":5919,"sources":["file"],"sentiment_backend":"lexicon","embed_backend":"tfidf","window_hours":24,"refresh_minutes":null,"mood":{"index":58.6,"label":"neutral","bull":402,"bear":163,"neutral":265,"posts":830}}

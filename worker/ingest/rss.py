@@ -21,6 +21,11 @@ FEEDS = {
     "seekingalpha-news": "https://seekingalpha.com/market_currents.xml",
     "benzinga": "https://www.benzinga.com/feed",
     "investing-news": "https://www.investing.com/rss/news_25.rss",
+    # Google News query feeds — aggregated mainstream coverage, keyless.
+    "gnews-stocks": "https://news.google.com/rss/search?q=stock+market&hl=en-US&gl=US&ceid=US:en",
+    "gnews-earnings": "https://news.google.com/rss/search?q=earnings+report+stock&hl=en-US&gl=US&ceid=US:en",
+    "gnews-fed": "https://news.google.com/rss/search?q=federal+reserve+rates&hl=en-US&gl=US&ceid=US:en",
+    "gnews-crypto": "https://news.google.com/rss/search?q=bitcoin+OR+ethereum+market&hl=en-US&gl=US&ceid=US:en",
 }
 
 

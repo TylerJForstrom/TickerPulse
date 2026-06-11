@@ -78,6 +78,7 @@ flowchart TB
 - `phase` = emerging / peaking / fading / steady from breakout × velocity × prior-window heat
 - `bull_bear_ratio` = Laplace-smoothed bull/bear counts
 - engagement-weighted scores use `Σ log1p(engagement)` so one viral post can't masquerade as a movement
+- sentiment averages and the mood index are **influence-weighted**: `platform_authority × (1 + log1p(engagement))` — a syndicated headline or 2,000-upvote thread moves the needle more than a drive-by micropost, while raw mention counts stay honest and unweighted (`worker/metrics/weights.py`)
 
 **Buzz vs price (flagship)** — hourly mention counts are aligned with real OHLCV (yfinance) and correlated at lags −12h…+12h. The dashboard reports whether social buzz *leads* or *follows* the price action, with the full lag-correlation profile.
 
