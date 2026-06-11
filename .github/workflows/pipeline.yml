@@ -2,7 +2,7 @@
 # schedule and writes results to Postgres. Free on public repos.
 # (Editing this file also re-registers the cron with GitHub's scheduler
 # and triggers an immediate run — handy after adding source secrets or
-# changing worker behavior.)
+# changing worker behavior, e.g. new ingest adapters.)
 #
 # Required repository secrets for live mode:
 #   DATABASE_URL              (Supabase/Neon Postgres connection string)

@@ -50,9 +50,14 @@ def collect_posts(demo: bool) -> tuple[list[Post], list[str]]:
         from worker.ingest.bluesky import BlueskyAdapter
         from worker.ingest.hackernews import HackerNewsAdapter
         from worker.ingest.rss import RSSAdapter
+        from worker.ingest.edgar import EdgarAdapter
+        from worker.ingest.gdelt import GdeltAdapter
+        from worker.ingest.mastodon import MastodonAdapter
+        from worker.ingest.finnhub import FinnhubAdapter
 
         adapters += [RedditAdapter(), StockTwitsAdapter(), BlueskyAdapter(),
-                     HackerNewsAdapter(), RSSAdapter()]
+                     HackerNewsAdapter(), RSSAdapter(), EdgarAdapter(),
+                     GdeltAdapter(), MastodonAdapter(), FinnhubAdapter()]
 
     posts: list[Post] = []
     used: list[str] = []

@@ -62,7 +62,7 @@ flowchart TB
 - **Free tier only.** GitHub Actions does the heavy lifting on a schedule (public repo = unlimited minutes); Netlify serves the SPA + a thin read API; Supabase stores results. No always-on server — but ingestion is adapter-based, so moving the worker to Render/Fly for true streaming is a config change, not a rewrite.
 - **Precompute everything.** The worker writes final payloads; the read API is a single indexed lookup per request. The dashboard never makes the database think.
 - **Zero-credential demo mode.** With no env vars at all, the pipeline processes a bundled 5k-post sample dataset with realistic narrative arcs, and the dashboard serves those artifacts statically. Every feature works.
-- **ToS-compliant sources only.** Official APIs (Reddit OAuth, StockTwits public API, AT Protocol, Algolia HN, RSS), polite rate limits, aggressive caching.
+- **ToS-compliant sources only.** Official APIs and syndication endpoints — Reddit OAuth, StockTwits public API, Bluesky AT Protocol, Algolia HN, 12 finance RSS/Google News feeds, SEC EDGAR filings (8-K + insider Form 4s), the GDELT global news index, Mastodon public timelines, and optional Finnhub — with polite rate limits and declared user agents. No scraping, ever.
 
 ## The NLP / metrics core
 
@@ -88,7 +88,8 @@ flowchart TB
 
 ```
 worker/            Python pipeline
-  ingest/          source adapters (reddit, stocktwits, bluesky, hn, rss, csv/json, market data)
+  ingest/          source adapters (reddit, stocktwits, bluesky, hn, rss/google-news,
+                   sec edgar, gdelt, mastodon, finnhub, csv/json, market data)
   nlp/             ticker extraction · FinBERT/lexicon sentiment · topic clustering
   metrics/         trends · correlation · alerts · co-occurrence graph
   sinks/           Postgres writer · JSON artifact writer (demo)
