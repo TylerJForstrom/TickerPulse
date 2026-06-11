@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dashboard/dist/
+.netlify/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Worker scratch
+worker/.cache/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

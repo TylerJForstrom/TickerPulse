@@ -1,0 +1,77 @@
+# Near-live worker: runs the full ingest → NLP → metrics pipeline on a
+# schedule and writes results to Postgres. Free on public repos.
+#
+# Required repository secrets for live mode:
+#   DATABASE_URL              (Supabase/Neon Postgres connection string)
+# Optional: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT,
+#           BLUESKY_HANDLE, BLUESKY_APP_PASSWORD, HF_TOKEN
+#
+# Without DATABASE_URL the job exits quietly — the deployed demo keeps
+# serving the bundled sample artifacts.
+name: pipeline
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 min (GitHub may throttle to ~real cadence)
+  workflow_dispatch:
+    inputs:
+      skip_topics:
+        description: "Skip topic clustering (faster run)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check live mode
+        id: live
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "No DATABASE_URL secret — demo deployment, nothing to do."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.live.outputs.enabled == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies (incl. FinBERT + embeddings)
+        if: steps.live.outputs.enabled == 'true'
+        run: |
+          pip install -r requirements.txt -r requirements-ml.txt
+
+      - name: Cache HuggingFace models
+        if: steps.live.outputs.enabled == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-v1
+
+      - name: Run pipeline
+        if: steps.live.outputs.enabled == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.skip_topics }}" = "true" ]; then ARGS="--skip-topics"; fi
+          python -m worker.pipeline $ARGS

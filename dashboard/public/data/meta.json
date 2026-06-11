@@ -1,0 +1,1 @@
+{"mode":"demo","updated_at":"2026-06-11T13:13:41.457962+00:00","posts_processed":5919,"sources":["file"],"sentiment_backend":"lexicon","embed_backend":"tfidf","window_hours":24,"refresh_minutes":null,"mood":{"index":57.8,"label":"neutral","bull":496,"bear":215,"neutral":323,"posts":1034}}

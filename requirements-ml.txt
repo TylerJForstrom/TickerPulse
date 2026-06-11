@@ -1,0 +1,7 @@
+# Heavy ML stack — installed only in the GitHub Actions worker (CPU).
+# FinBERT finance sentiment + sentence embeddings for topic clustering.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+transformers>=4.40
+sentence-transformers>=2.7
+umap-learn>=0.5.5
