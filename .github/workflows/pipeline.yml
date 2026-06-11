@@ -1,6 +1,7 @@
 # Near-live worker: runs the full ingest → NLP → metrics pipeline on a
 # schedule and writes results to Postgres. Free on public repos.
-# (Editing this file also re-registers the cron with GitHub's scheduler.)
+# (Editing this file also re-registers the cron with GitHub's scheduler
+# and triggers an immediate run — handy after adding source secrets.)
 #
 # Required repository secrets for live mode:
 #   DATABASE_URL              (Supabase/Neon Postgres connection string)
