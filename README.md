@@ -17,39 +17,44 @@ TickerPulse ingests public social-media chatter (Reddit, StockTwits, Bluesky, Ha
 |---|---|
 | Trending leaderboard (volume, velocity, breakout σ) | *"What is the crowd piling into right now, and is it accelerating?"* |
 | Phase flags (emerging / peaking / fading) | *"Am I early, on time, or late to this story?"* |
+| **Signals backtest (flag replay + forward returns)** | *"Do these flags actually precede moves? Show me the win rate."* |
 | Bull:bear ratio + sentiment trajectory | *"Is this hype or fear — and is the mood shifting?"* |
 | Engagement-weighted scores | *"Is this 1 viral post or a genuinely broad conversation?"* |
 | Cross-platform diffusion | *"Where did this start, and has it escaped its bubble?"* (WSB-only ≠ mainstream) |
 | **Buzz-vs-price overlay + lead/lag correlation** | *"Does chatter for this ticker actually precede the move, or just react to it?"* |
-| Topic landscape map | *"What themes — not just tickers — dominate the conversation?"* |
-| Unusual-activity alerts | *"What spiked out of nowhere in the last few hours?"* |
+| Head-to-head compare | *"NVDA or AMD — who owns the conversation, and whose tape agrees?"* |
+| Topic landscape map + theme trends | *"What themes — not just tickers — dominate, and which are rising?"* |
+| Unusual-activity alerts (+ optional Discord push) | *"What spiked out of nowhere in the last few hours?"* |
 | Exportable brief | *"Give me the one-pager for the morning meeting."* |
 
 ## Architecture
 
-```
-                       ┌──────────────────────────────────────────────┐
-                       │            GitHub Actions (cron, free)       │
-   Reddit API ──┐      │  Python worker, every 15 min:                │
-   StockTwits ──┤      │  ingest → normalize → ticker extraction →    │
-   Bluesky ─────┼─────▶│  FinBERT sentiment → topic clustering        │
-   Hacker News ─┤      │  (MiniLM → UMAP → HDBSCAN → c-TF-IDF) →      │
-   RSS feeds ───┘      │  trend metrics → buzz-vs-price correlation   │
-   yfinance OHLCV ────▶│                                              │
-                       └───────────────────┬──────────────────────────┘
-                                           │ precomputed payloads
-                                           ▼
-                        ┌────────────────────────────────┐
-                        │  Supabase Postgres (free tier) │
-                        │  posts + time-series + meta    │
-                        └───────────────┬────────────────┘
-                                        │ indexed key lookups (read-only)
-                                        ▼
-                 ┌──────────────────────────────────────────────┐
-                 │                  Netlify                      │
-                 │  serverless functions (/api/*)  ←  React SPA │
-                 │  demo fallback: static JSON artifacts (/data)│
-                 └──────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph sources [Public sources]
+        R[Reddit API]
+        ST[StockTwits]
+        BS[Bluesky AT Proto]
+        HN[Hacker News]
+        RSS[Finance RSS]
+        YF[yfinance OHLCV]
+    end
+
+    subgraph worker [GitHub Actions cron — every 15 min, free]
+        ING[ingest adapters] --> NORM[normalize and dedupe]
+        NORM --> TICK[ticker extraction<br/>cashtags + dictionary + aliases]
+        TICK --> SENT[FinBERT sentiment]
+        SENT --> TOPICS[topic clustering<br/>MiniLM → UMAP → HDBSCAN → c-TF-IDF]
+        TOPICS --> METRICS[trend metrics · lead/lag correlation<br/>flag backtest · alerts · mood]
+    end
+
+    R & ST & BS & HN & RSS --> ING
+    YF --> METRICS
+    METRICS -->|precomputed payloads| DB[(Supabase Postgres<br/>free tier, RLS read-only)]
+    METRICS -.->|new alerts| DISC[Discord webhook]
+    DB -->|indexed key lookups| FN[Netlify Functions /api/*]
+    FN --> SPA[React SPA dashboard]
+    DEMO[bundled JSON artifacts /data/*] -.->|zero-credential demo fallback| SPA
 ```
 
 **Design principles**
@@ -75,6 +80,8 @@ TickerPulse ingests public social-media chatter (Reddit, StockTwits, Bluesky, Ha
 - engagement-weighted scores use `Σ log1p(engagement)` so one viral post can't masquerade as a movement
 
 **Buzz vs price (flagship)** — hourly mention counts are aligned with real OHLCV (yfinance) and correlated at lags −12h…+12h. The dashboard reports whether social buzz *leads* or *follows* the price action, with the full lag-correlation profile.
+
+**Flag backtest (the honesty check)** — the Signals page replays the trailing week at 6-hour as-of steps, re-running the trend engine with only the posts visible at each moment, and scores every *emerging* flag by the ticker's real forward return at +4/+24/+48h. Win rates are reported as-is — fizzled flags count against the signal. Flat returns from closed-market hours are excluded rather than miscounted as losses. *(Tested in `tests/test_backtest.py`.)*
 
 ## Repo layout
 
@@ -105,12 +112,13 @@ cd dashboard && npm install && npm run dev
 
 **Live mode:**
 
-1. Create a free Supabase (or Neon) project; run `db/schema.sql`.
-2. Add repo secrets: `DATABASE_URL` (+ optional `REDDIT_CLIENT_ID/SECRET`, `BLUESKY_HANDLE/APP_PASSWORD`, `HF_TOKEN`). The Actions cron starts writing on the next tick.
+1. Create a free Supabase (or Neon) project; the worker creates its own schema on first run (or run `db/schema.sql` yourself — it also enables read-only RLS).
+2. Add repo secrets: `DATABASE_URL` — use Supabase's **Session pooler** string; GitHub runners are IPv4-only (+ optional `REDDIT_CLIENT_ID/SECRET`, `BLUESKY_HANDLE/APP_PASSWORD`, `HF_TOKEN`, `DISCORD_WEBHOOK_URL` for alert pushes). The Actions cron starts writing on the next tick and prunes data older than 30 days so the free tier never fills.
 3. On Netlify set `SUPABASE_URL` + `SUPABASE_ANON_KEY`; the same dashboard flips from demo to near-live automatically.
 
 ```bash
-pytest        # ticker extraction + trend math tests
+pytest                      # ticker extraction + trend math + backtest tests
+cd dashboard && npm test    # data-client fallback tests (vitest)
 ```
 
 ## Stack

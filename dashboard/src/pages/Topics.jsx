@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getData } from "../api.js";
-import { Loading } from "../components/bits.jsx";
+import { Loading, Sparkline } from "../components/bits.jsx";
 
 const PALETTE = [
   "#60a5fa", "#4ade80", "#f87171", "#fbbf24", "#c084fc", "#34d399",
@@ -163,6 +163,9 @@ export default function Topics() {
                 onClick={() => setActiveTopic(activeTopic === t.id ? null : t.id)}>
                 <span className="swatch" style={{ background: topicColor(t.id) }} />
                 <span className="lbl" title={t.terms?.join(", ")}>{t.label}</span>
+                {t.trend === "rising" && <span title="rising over the last 3 days" style={{ color: "var(--bull)", fontSize: 11 }}>▲</span>}
+                {t.trend === "cooling" && <span title="cooling over the last 3 days" style={{ color: "var(--bear)", fontSize: 11 }}>▼</span>}
+                {t.series && <Sparkline data={t.series} width={54} height={18} color={topicColor(t.id)} />}
                 <span className="n">{t.size}</span>
               </div>
             ))}

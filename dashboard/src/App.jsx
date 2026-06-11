@@ -1,10 +1,15 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { Suspense, createContext, lazy, useContext, useEffect, useState } from "react";
 import { NavLink, Route, Routes, Link } from "react-router-dom";
 import { getData, currentMode } from "./api.js";
-import Leaderboard from "./pages/Leaderboard.jsx";
-import TickerDetail from "./pages/TickerDetail.jsx";
-import Topics from "./pages/Topics.jsx";
-import Brief from "./pages/Brief.jsx";
+import { Loading } from "./components/bits.jsx";
+
+// Route-level code splitting: Recharts/d3 only load with the page that uses them.
+const Leaderboard = lazy(() => import("./pages/Leaderboard.jsx"));
+const TickerDetail = lazy(() => import("./pages/TickerDetail.jsx"));
+const Topics = lazy(() => import("./pages/Topics.jsx"));
+const Brief = lazy(() => import("./pages/Brief.jsx"));
+const Signals = lazy(() => import("./pages/Signals.jsx"));
+const Compare = lazy(() => import("./pages/Compare.jsx"));
 
 const MetaContext = createContext(null);
 export const useMeta = () => useContext(MetaContext);
@@ -50,6 +55,8 @@ export default function App() {
           <nav className="nav">
             <NavLink to="/" end>Trending</NavLink>
             <NavLink to="/topics">Topic Map</NavLink>
+            <NavLink to="/signals">Signals</NavLink>
+            <NavLink to="/compare">Compare</NavLink>
             <NavLink to="/brief">Brief</NavLink>
           </nav>
           <div className="topbar-right">
@@ -62,12 +69,16 @@ export default function App() {
           </div>
         </header>
 
-        <Routes>
-          <Route path="/" element={<Leaderboard />} />
-          <Route path="/ticker/:symbol" element={<TickerDetail />} />
-          <Route path="/topics" element={<Topics />} />
-          <Route path="/brief" element={<Brief />} />
-        </Routes>
+        <Suspense fallback={<Loading label="loading page" />}>
+          <Routes>
+            <Route path="/" element={<Leaderboard />} />
+            <Route path="/ticker/:symbol" element={<TickerDetail />} />
+            <Route path="/topics" element={<Topics />} />
+            <Route path="/signals" element={<Signals />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/brief" element={<Brief />} />
+          </Routes>
+        </Suspense>
 
         <footer className="footer">
           <span className="disclaimer">⚠ Not financial advice. TickerPulse aggregates public social chatter for research and entertainment.</span>

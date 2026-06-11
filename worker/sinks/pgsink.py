@@ -94,6 +94,21 @@ def replace_table(conn, table: str, rows: list[dict], json_cols: set[str]) -> No
     conn.commit()
 
 
+def prune(conn, days: int = 30) -> dict[str, int]:
+    """Retention: drop rows older than `days` so the free-tier database
+    never fills. Snapshot tables are replaced every run and need no pruning."""
+    counts: dict[str, int] = {}
+    with conn.cursor() as cur:
+        for table, col in (("posts", "created_at"), ("alerts", "created_at"),
+                           ("prices", "ts"), ("ticker_buckets", "bucket_start")):
+            cur.execute(
+                f"delete from {table} where {col} < now() - interval '%s days'" % int(days)
+            )
+            counts[table] = cur.rowcount
+    conn.commit()
+    return counts
+
+
 def upsert_meta(conn, key: str, value: object) -> None:
     with conn.cursor() as cur:
         cur.execute(

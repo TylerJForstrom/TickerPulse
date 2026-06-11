@@ -32,6 +32,13 @@ from worker.nlp.sentiment import score_posts
 from worker.nlp.tickers import tag_posts
 
 
+def pgsink_load_meta(conn, key: str):
+    with conn.cursor() as cur:
+        cur.execute("select value from meta where key = %s", (key,))
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
 def collect_posts(demo: bool) -> tuple[list[Post], list[str]]:
     """Run every available adapter; returns (posts, source names used)."""
     adapters = []
@@ -107,13 +114,30 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
     print(f"  {len(trends)} tickers above floor; mood {mood['index']} ({mood['label']}); "
           f"{len(alerts)} alerts")
 
-    print("[5/6] market data + correlation")
+    print("[5/6] market data + correlation + flag backtest")
+    from worker.metrics.backtest import replay_flags, score_events, summarize, HORIZONS
+
+    flag_events = replay_flags(posts, window_hours=settings.window_hours)
+    event_tickers = {e["ticker"] for e in flag_events}
+    price_tickers = list(dict.fromkeys([*top_tickers, *sorted(event_tickers)]))
+
     buckets = {t: bucket_series(posts, t, settings.bucket_minutes) for t in top_tickers}
     if skip_prices:
-        prices = {t: synthetic_prices(t) for t in top_tickers}
+        prices = {t: synthetic_prices(t) for t in price_tickers}
     else:
-        prices = fetch_prices(top_tickers, days=30, interval="1h")
+        prices = fetch_prices(price_tickers, days=30, interval="1h")
     correlations = {t: compute_correlation(t, buckets[t], prices[t]) for t in top_tickers}
+
+    score_events(flag_events, prices)
+    flag_events.sort(key=lambda e: e["flagged_at"], reverse=True)
+    backtest_payload = {
+        "summary": summarize(flag_events),
+        "events": flag_events[:60],
+        "params": {"window_hours": settings.window_hours,
+                   "breakout_floor": 1.5, "horizons": list(HORIZONS)},
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    print(f"  {len(flag_events)} historical flags replayed")
 
     topics_payload = {"topics": [], "points": [], "backend": "skipped"}
     if not skip_topics:
@@ -167,9 +191,22 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
             {k: a[k] for k in ("ticker", "kind", "message", "score", "created_at")}
             for a in alerts
         ], set())
+        # Notify on fresh alerts before overwriting the previous snapshot.
+        from worker.notify import send_discord_alerts
+
+        prev = pgsink_load_meta(conn, "alerts") or {}
+        sent = send_discord_alerts(alerts, prev.get("alerts", []))
+        if sent:
+            print(f"  discord: sent {sent} new alerts")
+
+        pruned = pgsink.prune(conn, days=30)
+        if any(pruned.values()):
+            print(f"  pruned: {pruned}")
+
         pgsink.upsert_meta(conn, "meta", meta)
         pgsink.upsert_meta(conn, "trending", trending_payload)
         pgsink.upsert_meta(conn, "alerts", {"alerts": alerts, "updated_at": updated_at})
+        pgsink.upsert_meta(conn, "backtest", backtest_payload)
         pgsink.upsert_meta(conn, "graph", graph)
         pgsink.upsert_meta(conn, "topics_map", topics_payload)
         pgsink.upsert_meta(conn, "brief", {"markdown": brief_md})
@@ -190,6 +227,7 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
             "graph": graph,
             "alerts": {"alerts": alerts, "updated_at": updated_at},
             "brief": {"markdown": brief_md, "updated_at": updated_at},
+            "backtest": backtest_payload,
         }
         for t in top_tickers:
             payloads[f"tickers/{t}"] = {

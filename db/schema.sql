@@ -118,3 +118,22 @@ create table if not exists meta (
   value      jsonb,
   updated_at timestamptz default now()
 );
+
+-- Row-level security: the worker connects as the table owner and bypasses
+-- RLS; the Netlify read-API's anon role gets SELECT-only access. Idempotent
+-- so ensure_schema can run it on every pipeline tick.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'posts', 'ticker_buckets', 'ticker_trends', 'topics', 'topic_points',
+    'prices', 'correlations', 'alerts', 'meta'
+  ]
+  loop
+    execute format('alter table %I enable row level security', t);
+    begin
+      execute format('create policy read_only_all on %I for select using (true)', t);
+    exception when duplicate_object then null;
+    end;
+  end loop;
+end $$;

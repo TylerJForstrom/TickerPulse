@@ -73,6 +73,7 @@ jobs:
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           ARGS=""
           if [ "${{ inputs.skip_topics }}" = "true" ]; then ARGS="--skip-topics"; fi

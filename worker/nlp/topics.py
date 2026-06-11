@@ -15,11 +15,15 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
 from worker.config import settings
 from worker.models import Post
+
+SERIES_HOURS = 72       # trailing window for per-topic activity series
+SERIES_BUCKET_H = 3     # series resolution
 
 MAX_POSTS = 3000  # embedding budget per run
 STOPWORDS = set("""
@@ -138,6 +142,10 @@ def compute_topics(posts: list[Post], backend: str | None = None) -> dict:
     labels = cluster_points(coords)
     term_labels = ctfidf_labels(texts, labels)
 
+    now = datetime.now(timezone.utc)
+    n_series = SERIES_HOURS // SERIES_BUCKET_H
+    series_start = now - timedelta(hours=SERIES_HOURS)
+
     topics = []
     for c in sorted(set(labels) - {-1}):
         members = [p for p, l in zip(sample, labels) if l == c]
@@ -145,6 +153,15 @@ def compute_topics(posts: list[Post], backend: str | None = None) -> dict:
         tickers = Counter(t for p in members for t in p.tickers)
         terms = term_labels.get(c, [])
         label = " / ".join(terms[:3]) if terms else f"topic {c}"
+        # Activity over the trailing window — the "is this theme rising?" series.
+        series = [0] * n_series
+        for p in members:
+            if p.timestamp >= series_start:
+                idx = min(n_series - 1,
+                          int((p.timestamp - series_start).total_seconds() // (SERIES_BUCKET_H * 3600)))
+                series[idx] += 1
+        half = n_series // 2
+        early, late = sum(series[:half]), sum(series[half:])
         topics.append({
             "id": int(c),
             "label": label,
@@ -152,6 +169,8 @@ def compute_topics(posts: list[Post], backend: str | None = None) -> dict:
             "size": len(members),
             "sentiment_avg": round(sum(scored) / len(scored), 4) if scored else 0.0,
             "tickers": [{"ticker": t, "count": n} for t, n in tickers.most_common(6)],
+            "series": series,
+            "trend": "rising" if late > early * 1.3 else "cooling" if late * 1.3 < early else "flat",
         })
 
     # Normalize coords to [0,1] for resolution-independent rendering.
