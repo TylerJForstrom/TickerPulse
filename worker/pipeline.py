@@ -19,7 +19,7 @@ import os
 import sys
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from worker.config import DATA_DIR, settings
 from worker.models import Post, dedupe
@@ -245,6 +245,25 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
 
         optional_stage("notify", _notify, None)
         conn.rollback()  # clear any aborted tx so later writes can't be poisoned
+
+        # Persist hour-ALIGNED bucket series so the archive stage has data to
+        # export. Display buckets anchor at now-168h (drifting boundaries);
+        # the persisted series anchors at the top of the hour so the table's
+        # PK stays stable and re-upserts converge instead of accumulating.
+        def _persist_buckets():
+            aligned_now = datetime.now(timezone.utc).replace(
+                minute=0, second=0, microsecond=0
+            ) + timedelta(hours=1)
+            total = 0
+            for t in top_tickers:
+                aligned = bucket_series(
+                    posts, t, settings.bucket_minutes, now=aligned_now
+                )
+                total += pgsink.upsert_buckets(conn, t, settings.bucket_minutes, aligned)
+            print(f"  buckets persisted: {total} rows across {len(top_tickers)} tickers")
+
+        optional_stage("persist-buckets", _persist_buckets, None)
+        conn.rollback()
 
         # Archive derived metrics to local files BEFORE pruning: retention
         # deletes history the backtest layer can never recover otherwise.

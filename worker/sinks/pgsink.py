@@ -94,6 +94,40 @@ def replace_table(conn, table: str, rows: list[dict], json_cols: set[str]) -> No
     conn.commit()
 
 
+def upsert_buckets(conn, ticker: str, bucket_minutes: int, rows: list[dict]) -> int:
+    """Persist a ticker's hour-aligned bucket series. The PK
+    (ticker, bucket_start, bucket_minutes) makes re-upserts idempotent: each
+    run rewrites the trailing window and every bucket converges to its final
+    value once its hour has fully passed. Empty buckets are skipped — absence
+    means zero mentions, and skipping keeps the table ~10x smaller."""
+    live = [r for r in rows if r.get("mentions") or r.get("engagement")]
+    if not live:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(
+            """insert into ticker_buckets
+                 (ticker, bucket_start, bucket_minutes, mentions, engagement,
+                  bull, bear, neutral, sentiment_avg, platforms)
+               values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               on conflict (ticker, bucket_start, bucket_minutes) do update set
+                 mentions = excluded.mentions, engagement = excluded.engagement,
+                 bull = excluded.bull, bear = excluded.bear,
+                 neutral = excluded.neutral,
+                 sentiment_avg = excluded.sentiment_avg,
+                 platforms = excluded.platforms""",
+            [
+                (
+                    ticker, r["bucket_start"], bucket_minutes, r["mentions"],
+                    r["engagement"], r["bull"], r["bear"], r["neutral"],
+                    r["sentiment_avg"], json.dumps(r["platforms"]),
+                )
+                for r in live
+            ],
+        )
+    conn.commit()
+    return len(live)
+
+
 def prune(conn, days: int = 30) -> dict[str, int]:
     """Retention: drop rows older than `days` so the free-tier database
     never fills. Snapshot tables are replaced every run and need no pruning."""

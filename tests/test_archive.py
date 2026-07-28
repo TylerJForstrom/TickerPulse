@@ -47,6 +47,19 @@ def test_existing_files_never_rewritten(tmp_path):
     assert path.read_bytes() == before  # first archive of a day is final
 
 
+def test_aligned_bucket_series_boundaries_are_stable_across_runs():
+    """Persisted buckets must use clock-hour boundaries so the DB primary key
+    is identical run-to-run (drifting anchors would accumulate junk rows)."""
+    from worker.metrics.trends import bucket_series
+
+    aligned_now = dt.datetime(2026, 7, 28, 15, 0, tzinfo=dt.UTC)
+    series_a = bucket_series([], "AAPL", 60, now=aligned_now)
+    series_b = bucket_series([], "AAPL", 60, now=aligned_now)
+    starts = [row["bucket_start"] for row in series_a]
+    assert starts == [row["bucket_start"] for row in series_b]
+    assert all(s.endswith(":00:00+00:00") for s in starts)  # top-of-hour anchors
+
+
 def test_trends_snapshot_first_run_of_day_wins(tmp_path):
     count = export_trends_snapshot([{"ticker": "AAPL", "mentions": 10}], str(tmp_path), today=TODAY)
     assert count == 1
