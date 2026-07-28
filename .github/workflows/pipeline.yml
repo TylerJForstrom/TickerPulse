@@ -32,6 +32,9 @@ concurrency:
   group: pipeline
   cancel-in-progress: false
 
+permissions:
+  contents: write   # the archive stage commits history back to the repo
+
 env:
   # Node 20 actions are force-migrated to Node 24 on 2026-06-16; opt in
   # early so the cutover can't silently break the cron.
@@ -89,3 +92,23 @@ jobs:
           ARGS=""
           if [ "${{ inputs.skip_topics }}" = "true" ]; then ARGS="--skip-topics"; fi
           python -m worker.pipeline $ARGS
+
+      - name: Commit archived metrics
+        # The runner disk is destroyed after this job: the archive stage's
+        # output is only durable once committed. Runs even if the pipeline
+        # step failed partway — whatever was archived should survive.
+        if: always() && steps.live.outputs.enabled == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A archive
+          if git diff --cached --quiet; then
+            echo "no new archive files"
+            exit 0
+          fi
+          git commit -m "archive: sentiment history $(date -u +%Y-%m-%d)"
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase origin main || exit 1
+          done
+          exit 1
