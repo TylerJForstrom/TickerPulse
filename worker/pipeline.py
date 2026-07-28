@@ -15,6 +15,7 @@ the snapshot tables the Netlify read-API queries.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 import traceback
@@ -244,6 +245,19 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
 
         optional_stage("notify", _notify, None)
         conn.rollback()  # clear any aborted tx so later writes can't be poisoned
+
+        # Archive derived metrics to local files BEFORE pruning: retention
+        # deletes history the backtest layer can never recover otherwise.
+        def _archive():
+            from worker.sinks import archive as archive_sink
+
+            out_dir = os.environ.get("TICKERPULSE_ARCHIVE_DIR", "archive")
+            result = archive_sink.archive(conn, out_dir)
+            if result["bucket_days_written"]:
+                print(f"  archived: {result}")
+
+        optional_stage("archive", _archive, None)
+        conn.rollback()
 
         def _prune():
             pruned = pgsink.prune(conn, days=30)
