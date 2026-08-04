@@ -15,12 +15,25 @@ name: pipeline
 
 on:
   schedule:
-    # Offset minutes: the :00/:15/:30/:45 marks are heavily contended on
-    # GitHub's shared scheduler and get throttled or dropped; odd minutes
-    # fire far more reliably.
+    # This requests a run every 15 min, but GitHub's shared scheduler drops
+    # most ticks regardless: measured 2026-08-01..03, only 10-16 scheduled
+    # runs/day actually fired (start-to-start gaps up to ~3h35m), all
+    # successful — the loss is upstream tick delivery, not run failures.
+    # Off-mark minutes still help at the margin (:00/:15/:30/:45 are the
+    # most contended slots). Ingestion is therefore gap-tolerant instead of
+    # cadence-dependent: listing adapters paginate back INGEST_LOOKBACK_HOURS
+    # (default 6h ≈ 1.7x the worst observed gap) and print a `[saturation]`
+    # line when a listing outruns its page budget — see
+    # worker/ingest/base.py drain_pages.
     - cron: "4,19,34,49 * * * *"
   push:
-    paths: [".github/workflows/pipeline.yml"]   # editing this file = test run
+    # Editing this file on main re-registers the cron and triggers an
+    # immediate run. main only: a push-triggered run on a feature branch
+    # would hit the live DB and could commit archive files onto the branch,
+    # colliding with main's own archive commits. To verify a branch, use
+    # workflow_dispatch with --ref <branch> instead.
+    branches: [main]
+    paths: [".github/workflows/pipeline.yml"]
   workflow_dispatch:
     inputs:
       skip_topics:
@@ -45,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Check live mode
         id: live
@@ -59,7 +72,7 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: steps.live.outputs.enabled == 'true'
         with:
           python-version: "3.12"
@@ -72,7 +85,7 @@ jobs:
 
       - name: Cache HuggingFace models
         if: steps.live.outputs.enabled == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/huggingface
           key: hf-models-v1
