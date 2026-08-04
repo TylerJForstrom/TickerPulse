@@ -22,7 +22,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 
 from worker.config import DATA_DIR, settings
-from worker.models import Post, dedupe
+from worker.models import Post, collapse_near_duplicates, dedupe
 from worker.brief import generate_brief
 from worker.ingest.fileloader import FileLoader
 from worker.ingest.market import fetch_prices, synthetic_prices
@@ -124,6 +124,13 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         posts = new_posts
 
     print("[4/6] metrics: trends, mood, graph, alerts")
+    # Long-form copypasta counts as ONE mention (origin post) with the
+    # campaign's engagement folded in; collapse runs on the metrics window,
+    # never on what gets stored, so the raw record stays complete.
+    n_raw = len(posts)
+    posts = collapse_near_duplicates(posts)
+    if len(posts) != n_raw:
+        print(f"  copypasta collapse: {n_raw - len(posts)} duplicate long posts folded into origins")
     trends = compute_ticker_trends(posts, window_hours=settings.window_hours)
     mood = market_mood(posts, window_hours=settings.window_hours)
     graph = compute_graph(posts)

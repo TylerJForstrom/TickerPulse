@@ -4,7 +4,7 @@ import datetime as dt
 import gzip
 import json
 
-from worker.sinks.archive import export_buckets, export_trends_snapshot
+from worker.sinks.archive import export_author_daily, export_buckets, export_trends_snapshot
 
 
 def read_gz_lines(path):
@@ -58,6 +58,33 @@ def test_aligned_bucket_series_boundaries_are_stable_across_runs():
     starts = [row["bucket_start"] for row in series_a]
     assert starts == [row["bucket_start"] for row in series_b]
     assert all(s.endswith(":00:00+00:00") for s in starts)  # top-of-hour anchors
+
+
+def author_row(day_str, hour=12, author="bob", tickers=("XYZ",), score=0.5):
+    return {
+        "platform": "reddit", "author": author, "tickers": list(tickers),
+        "sentiment": "bull", "sentiment_score": score,
+        "created_at": dt.datetime.fromisoformat(f"{day_str}T{hour:02d}:00:00+00:00"),
+    }
+
+
+def test_author_daily_existing_files_never_rewritten(tmp_path):
+    export_author_daily([author_row("2026-07-26")], str(tmp_path), today=TODAY)
+    path = tmp_path / "author_daily" / "2026-07-26.jsonl.gz"
+    before = path.read_bytes()
+    written = export_author_daily(
+        [author_row("2026-07-26", score=-0.9)], str(tmp_path), today=TODAY
+    )
+    assert written == {}  # day already archived
+    assert path.read_bytes() == before  # first archive of a day is final
+
+
+def test_author_daily_output_is_byte_deterministic(tmp_path):
+    rows = [author_row("2026-07-26", author=a, tickers=("XYZ", "ABC")) for a in ("z", "a")]
+    export_author_daily(rows, str(tmp_path / "one"), today=TODAY)
+    export_author_daily(list(reversed(rows)), str(tmp_path / "two"), today=TODAY)
+    p = "author_daily/2026-07-26.jsonl.gz"
+    assert (tmp_path / "one" / p).read_bytes() == (tmp_path / "two" / p).read_bytes()
 
 
 def test_trends_snapshot_first_run_of_day_wins(tmp_path):
