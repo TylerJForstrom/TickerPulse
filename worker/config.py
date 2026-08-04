@@ -50,6 +50,13 @@ class Settings:
 
     window_hours: int = int(os.getenv("PIPELINE_WINDOW_HOURS", "24"))
     bucket_minutes: int = int(os.getenv("PIPELINE_BUCKET_MINUTES", "60"))
+    # Gap tolerance for listing-based adapters: paginate newest-first
+    # listings back this many hours before trusting a single page's depth.
+    # GitHub's shared cron scheduler drops most of the pipeline's 15-min
+    # ticks (measured 2026-08-01..03: 10-16 runs/day, start-to-start gaps up
+    # to ~3h35m), and posts that scroll past a fixed-depth fetch during a
+    # gap are unrecoverable. 6h ≈ 1.7x the worst observed gap.
+    ingest_lookback_hours: int = int(os.getenv("INGEST_LOOKBACK_HOURS", "6"))
     sentiment_backend: str = os.getenv("SENTIMENT_BACKEND", "auto")
     embed_backend: str = os.getenv("EMBED_BACKEND", "auto")
 

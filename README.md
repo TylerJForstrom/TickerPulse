@@ -40,7 +40,7 @@ flowchart TB
         YF[yfinance OHLCV]
     end
 
-    subgraph worker [GitHub Actions cron — every 15 min, free]
+    subgraph worker [GitHub Actions cron — 15-min schedule, throttled to ~10-16 runs/day]
         ING[ingest adapters] --> NORM[normalize and dedupe]
         NORM --> TICK[ticker extraction<br/>cashtags + dictionary + aliases]
         TICK --> SENT[FinBERT sentiment]
@@ -60,6 +60,7 @@ flowchart TB
 **Design principles**
 
 - **Free tier only.** GitHub Actions does the heavy lifting on a schedule (public repo = unlimited minutes); Netlify serves the SPA + a thin read API; Supabase stores results. No always-on server — but ingestion is adapter-based, so moving the worker to Render/Fly for true streaming is a config change, not a rewrite.
+- **Gap-tolerant ingestion.** The 15-minute cron is a request, not a guarantee: GitHub's shared scheduler drops most ticks on this repo (measured 2026-08-01..03: 10-16 successful runs/day out of 96 requested, start-to-start gaps up to ~3h35m). Social listings are forward-only — a post that scrolls past a fixed-depth fetch during a gap is unrecoverable, and the loss is invisible afterwards (hourly buckets recompute from whatever *was* ingested, so complete-looking buckets don't prove complete ingestion). The Reddit `/new`, Bluesky search, and Mastodon timeline adapters therefore paginate back `INGEST_LOOKBACK_HOURS` (default 6h ≈ 1.7× the worst observed gap) and print a `[saturation]` marker in the run log whenever a listing outruns its page budget — the only observable trace of potential loss. Residual fixed-depth windows remain where pagination isn't practical: RSS feeds serve whatever the publisher includes, StockTwits' public rate budget (~200 req/hr) doesn't cover paging 30 symbol streams, and EDGAR/HN/GDELT/Finnhub are secondary breadth sources at fixed depth.
 - **Precompute everything.** The worker writes final payloads; the read API is a single indexed lookup per request. The dashboard never makes the database think.
 - **Zero-credential demo mode.** With no env vars at all, the pipeline processes a bundled 5k-post sample dataset with realistic narrative arcs, and the dashboard serves those artifacts statically. Every feature works.
 - **ToS-compliant sources only.** Official APIs and syndication endpoints — Reddit OAuth, StockTwits public API, Bluesky AT Protocol, Algolia HN, 12 finance RSS/Google News feeds, SEC EDGAR filings (8-K + insider Form 4s), the GDELT global news index, Mastodon public timelines, and optional Finnhub — with polite rate limits and declared user agents. No scraping, ever.
