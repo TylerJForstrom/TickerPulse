@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import datetime as dt
 import gzip
+import hashlib
 import json
 import os
 
@@ -79,6 +80,70 @@ def export_trends_snapshot(rows: list[dict], out_dir: str, today: dt.date | None
     rows = sorted(rows, key=lambda r: str(r.get("ticker")))
     _write_jsonl_gz(path, rows)
     return len(rows)
+
+
+def author_hash(platform: str, author: str) -> str:
+    """Stable one-way id for an author, scoped per platform so the same
+    handle on two venues never links. Deterministic across runs (no salt) on
+    purpose: author track-record weighting needs months of accrual under one
+    id. Raw usernames never reach the archive; only this hash does."""
+    return hashlib.sha256(f"{platform}:{author}".encode("utf-8")).hexdigest()[:16]
+
+
+def export_author_daily(rows: list[dict], out_dir: str, today: dt.date | None = None) -> dict[str, int]:
+    """Write per-(author_hash, ticker, day) stance aggregates for completed
+    past days — the raw material for author track-record weighting once
+    months accrue. Same contract as export_buckets: pure (rows in, files
+    out), idempotent (existing day files never rewritten), today's partial
+    day skipped so it is archived complete tomorrow.
+
+    Archive layout: archive/author_daily/YYYY-MM-DD.jsonl.gz, one row per
+    (platform, hashed author, ticker) with posts/bull/bear/sentiment_avg."""
+    today = today or dt.datetime.now(dt.UTC).date()
+    author_dir = os.path.join(out_dir, "author_daily")
+    os.makedirs(author_dir, exist_ok=True)
+    stats: dict[dt.date, dict[tuple[str, str, str], dict]] = {}
+    for row in rows:
+        created = row["created_at"]
+        if not isinstance(created, dt.datetime):
+            created = dt.datetime.fromisoformat(str(created))
+        day = created.date()
+        if day >= today:
+            continue
+        hashed = author_hash(str(row["platform"]), str(row["author"]))
+        for ticker in row.get("tickers") or []:
+            key = (str(row["platform"]), hashed, str(ticker))
+            agg = stats.setdefault(day, {}).setdefault(
+                key, {"posts": 0, "bull": 0, "bear": 0, "scores": []}
+            )
+            agg["posts"] += 1
+            sentiment = row.get("sentiment")
+            if sentiment in ("bull", "bear"):
+                agg[sentiment] += 1
+            score = row.get("sentiment_score")
+            if score is not None:
+                agg["scores"].append(float(score))
+    written: dict[str, int] = {}
+    for day, day_stats in sorted(stats.items()):
+        path = os.path.join(author_dir, f"{day.isoformat()}.jsonl.gz")
+        if os.path.exists(path):
+            continue
+        day_rows = []
+        for (platform, hashed, ticker), agg in sorted(day_stats.items()):
+            scores = agg.pop("scores")
+            day_rows.append(
+                {
+                    "day": day.isoformat(),
+                    "platform": platform,
+                    "author": hashed,
+                    "ticker": ticker,
+                    **agg,
+                    "sentiment_avg": sum(scores) / len(scores) if scores else None,
+                }
+            )
+        _write_jsonl_gz(path, day_rows)
+        written[day.isoformat()] = len(day_rows)
+    return written
 
 
 def _fetch_dicts(conn, query: str) -> list[dict]:
