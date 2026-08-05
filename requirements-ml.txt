@@ -1,7 +1,12 @@
 # Heavy ML stack — installed only in the GitHub Actions worker (CPU).
 # FinBERT finance sentiment + sentence embeddings for topic clustering.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.2
+# Floor is the plain version, NOT `>=2.13.0+cpu`: PEP 440 allows a local
+# version label only with `==`/`!=`, and pip rejects the WHOLE file if one
+# appears with `>=` (nothing here installs, not just torch). The CPU wheels
+# from the index above are versioned `2.13.0+cpu`, and a local label sorts
+# ABOVE its base version, so `>=2.13.0` accepts them. See tests/test_requirements.py.
+torch>=2.13.0
 transformers>=4.40
 sentence-transformers>=2.7
 umap-learn>=0.5.5
