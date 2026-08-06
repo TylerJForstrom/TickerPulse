@@ -1,7 +1,7 @@
 # Core worker dependencies — lightweight, run anywhere (laptop, CI).
 # Heavy ML extras (FinBERT, sentence-transformers) live in requirements-ml.txt
 # and are only installed in the GitHub Actions worker.
-requests>=2.31
+requests>=2.34.2
 pandas>=2.1
 numpy>=1.26
 scikit-learn>=1.9.0
