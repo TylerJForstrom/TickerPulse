@@ -8,8 +8,8 @@ finance-native sources, useful for diffusion tracking."""
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Iterator
 from datetime import datetime
-from typing import Iterable, Iterator
 
 import requests
 
@@ -69,7 +69,7 @@ class BlueskyAdapter(Adapter):
             author=handle,
             text=record.get("text", ""),
             timestamp=datetime.fromisoformat(
-                record.get("createdAt", item.get("indexedAt")).replace("Z", "+00:00")
+                record.get("createdAt", item.get("indexedAt"))
             ),
             engagement=int(item.get("likeCount", 0))
             + int(item.get("repostCount", 0)) * 2,
@@ -80,7 +80,12 @@ class BlueskyAdapter(Adapter):
     def _pages(self, q: str, headers: dict) -> Iterator[list[Post]]:
         cursor = None
         while True:
-            params = {"q": q, "limit": PAGE_LIMIT, "sort": "latest", "lang": "en"}
+            params: dict[str, str | int] = {
+                "q": q,
+                "limit": PAGE_LIMIT,
+                "sort": "latest",
+                "lang": "en",
+            }
             if cursor:
                 params["cursor"] = cursor
             resp = requests.get(

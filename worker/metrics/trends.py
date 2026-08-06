@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from worker.metrics.weights import post_weight, weighted_sentiment
 from worker.models import Post
@@ -82,7 +83,7 @@ def compute_ticker_trends(
     min_mentions: int = 3,
 ) -> dict:
     """Returns {ticker: metrics dict} for tickers above the mention floor."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     win_start = now - timedelta(hours=window_hours)
     prev_start = now - timedelta(hours=2 * window_hours)
 
@@ -189,10 +190,10 @@ def bucket_series(
 ) -> list[dict]:
     """Full time-series for a ticker: mentions, engagement, sentiment mix per
     bucket — feeds the detail-page charts and the DB ticker_buckets table."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     start = now - timedelta(hours=history_hours)
     n_buckets = int(history_hours * 60 // bucket_minutes)
-    buckets = [
+    buckets: list[dict[str, Any]] = [
         {
             "bucket_start": (start + timedelta(minutes=i * bucket_minutes)).isoformat(),
             "mentions": 0,
@@ -247,11 +248,21 @@ def market_mood(
 ) -> dict:
     """Influence-weighted bull/bear index across all chatter, 0–100.
     Weights = platform reach × engagement (see metrics/weights.py)."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     win_start = now - timedelta(hours=window_hours)
-    window = [
-        p for p in posts if p.timestamp >= win_start and p.sentiment_score is not None
-    ]
+    # Build the weight/score pairs in the same pass that filters. Re-reading
+    # `p.sentiment_score` later is `float | None` to a checker even though the
+    # filter just excluded None: the guarantee lives in the comprehension's
+    # condition, not in the element type, so binding it to a local is what
+    # actually carries it forward.
+    window: list[Post] = []
+    scored: list[tuple[float, float]] = []
+    for p in posts:
+        score = p.sentiment_score
+        if p.timestamp < win_start or score is None:
+            continue
+        window.append(p)
+        scored.append((post_weight(p), score))
     if not window:
         return {
             "index": 50.0,
@@ -261,8 +272,8 @@ def market_mood(
             "neutral": 0,
             "posts": 0,
         }
-    wsum = sum(post_weight(p) for p in window)
-    weighted = sum(post_weight(p) * p.sentiment_score for p in window) / wsum
+    wsum = sum(w for w, _ in scored)
+    weighted = sum(w * score for w, score in scored) / wsum
     index = round((weighted + 1) / 2 * 100, 1)
     label = (
         "extreme greed"

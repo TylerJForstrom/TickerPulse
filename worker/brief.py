@@ -4,7 +4,7 @@ or fintech-marketing reader. The dashboard serves it as one-click export."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _arrow(curr: int, prev: int) -> str:
@@ -21,7 +21,7 @@ def generate_brief(
     alerts: list[dict],
     mode: str,
 ) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ranked = sorted(trends.values(), key=lambda m: -m["breakout_score"])
     emerging = [m for m in ranked if m["phase"] == "emerging"][:5]
     fading = [m for m in ranked if m["phase"] == "fading"][:3]
@@ -29,12 +29,19 @@ def generate_brief(
 
     lines = [
         "# TickerPulse Market Chatter Brief",
-        f"*Generated {now.strftime('%Y-%m-%d %H:%M UTC')} · window: last "
-        f"{ranked[0]['window_hours'] if ranked else 24}h · mode: {mode}*",
+        # Parenthesized on purpose: an implicit concatenation inside a list
+        # literal is one element, and a stray comma would silently turn it
+        # into two lines of output instead of one.
+        (
+            f"*Generated {now.strftime('%Y-%m-%d %H:%M UTC')} · window: last "
+            f"{ranked[0]['window_hours'] if ranked else 24}h · mode: {mode}*"
+        ),
         "",
         f"## Market mood: {mood['label'].title()} ({mood['index']}/100)",
-        f"{mood['bull']} bullish / {mood['bear']} bearish / {mood['neutral']} neutral "
-        f"posts across {mood['posts']} scored posts.",
+        (
+            f"{mood['bull']} bullish / {mood['bear']} bearish / {mood['neutral']} "
+            f"neutral posts across {mood['posts']} scored posts."
+        ),
         "",
         "## Emerging tickers",
     ]

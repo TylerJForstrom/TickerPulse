@@ -19,17 +19,19 @@ import os
 import sys
 import time
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from worker.config import DATA_DIR, settings
-from worker.models import Post, collapse_near_duplicates, dedupe
 from worker.brief import generate_brief
+from worker.config import DATA_DIR, settings
+from worker.ingest.base import Adapter
 from worker.ingest.fileloader import FileLoader
 from worker.ingest.market import fetch_prices, synthetic_prices
 from worker.metrics.alerts import detect_alerts
 from worker.metrics.correlation import compute_correlation
 from worker.metrics.graph import compute_graph
 from worker.metrics.trends import bucket_series, compute_ticker_trends, market_mood
+from worker.models import Post, collapse_near_duplicates, dedupe
 from worker.nlp.sentiment import score_posts
 from worker.nlp.tickers import tag_posts
 
@@ -55,19 +57,19 @@ def pgsink_load_meta(conn, key: str):
 
 def collect_posts(demo: bool) -> tuple[list[Post], list[str]]:
     """Run every available adapter; returns (posts, source names used)."""
-    adapters = []
+    adapters: list[Adapter] = []
     if demo:
         adapters.append(FileLoader(DATA_DIR / "sample_posts.json", platform="sample"))
     else:
-        from worker.ingest.reddit import RedditAdapter
-        from worker.ingest.stocktwits import StockTwitsAdapter
         from worker.ingest.bluesky import BlueskyAdapter
-        from worker.ingest.hackernews import HackerNewsAdapter
-        from worker.ingest.rss import RSSAdapter
         from worker.ingest.edgar import EdgarAdapter
-        from worker.ingest.gdelt import GdeltAdapter
-        from worker.ingest.mastodon import MastodonAdapter
         from worker.ingest.finnhub import FinnhubAdapter
+        from worker.ingest.gdelt import GdeltAdapter
+        from worker.ingest.hackernews import HackerNewsAdapter
+        from worker.ingest.mastodon import MastodonAdapter
+        from worker.ingest.reddit import RedditAdapter
+        from worker.ingest.rss import RSSAdapter
+        from worker.ingest.stocktwits import StockTwitsAdapter
 
         adapters += [
             RedditAdapter(),
@@ -157,7 +159,7 @@ def run(
     )
 
     print("[5/6] market data + correlation + flag backtest")
-    from worker.metrics.backtest import replay_flags, score_events, summarize, HORIZONS
+    from worker.metrics.backtest import HORIZONS, replay_flags, score_events, summarize
 
     flag_events = optional_stage(
         "backtest:replay",
@@ -185,7 +187,7 @@ def run(
                 "by_lag": {},
                 "readout": "Correlation unavailable for this window.",
                 "series": [],
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -202,7 +204,7 @@ def run(
                 "breakout_floor": 1.5,
                 "horizons": list(HORIZONS),
             },
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
     backtest_payload = optional_stage(
@@ -212,12 +214,16 @@ def run(
             "summary": None,
             "events": [],
             "params": {},
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         },
     )
     print(f"  {len(flag_events)} historical flags replayed")
 
-    topics_payload = {"topics": [], "points": [], "backend": "skipped"}
+    topics_payload: dict[str, Any] = {
+        "topics": [],
+        "points": [],
+        "backend": "skipped",
+    }
     if not skip_topics:
         print("[6/6] topic clustering")
         from worker.nlp.topics import compute_topics
@@ -232,7 +238,7 @@ def run(
             f"{len(topics_payload['points'])} posts ({topics_payload['backend']})"
         )
 
-    updated_at = datetime.now(timezone.utc).isoformat()
+    updated_at = datetime.now(UTC).isoformat()
     brief_md = generate_brief(trends, mood, topics_payload["topics"], alerts, mode)
     meta = {
         "mode": mode,
@@ -255,6 +261,9 @@ def run(
 
     if live:
         from worker.sinks import pgsink
+
+        if conn is None:  # unreachable: the live branch above opens it
+            raise RuntimeError("live mode reached the write stage without a connection")
 
         db_trends = []
         for m in trends.values():
@@ -317,7 +326,7 @@ def run(
         # the persisted series anchors at the top of the hour so the table's
         # PK stays stable and re-upserts converge instead of accumulating.
         def _persist_buckets():
-            aligned_now = datetime.now(timezone.utc).replace(
+            aligned_now = datetime.now(UTC).replace(
                 minute=0, second=0, microsecond=0
             ) + timedelta(hours=1)
             total = 0

@@ -20,6 +20,39 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pytest -q
 
+  # Lint and types, added 2026-08-06. Every step here is BLOCKING and every
+  # one is at zero — none of this is advisory, because a check that is allowed
+  # to fail forever stops being read and hides the regression it exists to
+  # catch. Entry state was 38 of 46 files unformatted, 60 ruff findings, 53
+  # mypy errors; all three are now clean, so they gate.
+  #
+  # The single exception is ruff's BLE001 (`except Exception`), excluded from
+  # the gate in pyproject.toml with the reasoning written out there. It is not
+  # merely waved through: the ratchet step below re-selects it and fails if
+  # the count moves off its recorded ceiling in EITHER direction.
+  #
+  # requirements-dev.txt pins ruff and mypy. That pin is what makes these
+  # gates stable — ruff's default rule set is broad and moves between
+  # releases, so an unpinned upgrade would redefine the gate underneath a
+  # commit that changed nothing.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: ruff format (gate)
+        run: ruff format --check .
+      - name: ruff check (gate)
+        run: ruff check .
+      - name: mypy (gate)
+        run: mypy
+      - name: BLE001 ratchet
+        run: python -m tools.lint_ratchet
+
   build-dashboard:
     runs-on: ubuntu-latest
     steps:

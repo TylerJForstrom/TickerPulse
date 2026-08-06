@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from time import mktime
-from typing import Iterable
 
 from worker.ingest.base import Adapter
 from worker.models import Post
@@ -52,10 +52,10 @@ class RSSAdapter(Adapter):
                         continue
                     if entry.get("published_parsed"):
                         ts = datetime.fromtimestamp(
-                            mktime(entry.published_parsed), tz=timezone.utc
+                            mktime(entry.published_parsed), tz=UTC
                         )
                     else:
-                        ts = datetime.now(timezone.utc)
+                        ts = datetime.now(UTC)
                     uid = hashlib.sha1(
                         (entry.get("id") or entry.get("link") or title).encode()
                     ).hexdigest()[:16]

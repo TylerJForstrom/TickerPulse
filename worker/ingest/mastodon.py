@@ -8,8 +8,8 @@ diffusion picture."""
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Iterator
 from datetime import datetime
-from typing import Iterable, Iterator
 
 import requests
 
@@ -31,7 +31,7 @@ def _strip_html(html: str) -> str:
 
 
 def _status_ts(status: dict) -> datetime:
-    return datetime.fromisoformat(status["created_at"].replace("Z", "+00:00"))
+    return datetime.fromisoformat(status["created_at"])
 
 
 class MastodonAdapter(Adapter):

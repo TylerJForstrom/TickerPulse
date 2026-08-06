@@ -8,8 +8,8 @@ page is all it means. Engagement is score + comment count. Requires a free
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from datetime import UTC, datetime
 
 import requests
 
@@ -54,7 +54,7 @@ class RedditAdapter(Adapter):
             source=sub,
             author=d.get("author", "unknown"),
             text=text,
-            timestamp=datetime.fromtimestamp(d["created_utc"], tz=timezone.utc),
+            timestamp=datetime.fromtimestamp(d["created_utc"], tz=UTC),
             engagement=int(d.get("score", 0)) + int(d.get("num_comments", 0)),
             url=f"https://reddit.com{d.get('permalink', '')}",
         )

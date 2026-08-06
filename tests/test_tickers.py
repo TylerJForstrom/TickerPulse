@@ -1,8 +1,9 @@
 """Ticker extraction: cashtags, dictionary, aliases, junk disambiguation."""
 
+from datetime import UTC, datetime
+
 from worker.models import Post
 from worker.nlp.tickers import extract_tickers, tag_posts
-from datetime import datetime, timezone
 
 
 def test_cashtag_basic():
@@ -71,7 +72,7 @@ def test_tag_posts_merges_pretagged():
         platform="stocktwits",
         text="earnings beat across the board",
         author="a",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         tickers=["TSLA"],
     )
     tag_posts([p])

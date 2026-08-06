@@ -1,0 +1,6 @@
+{
+  "_comment": "Ceiling for lint rules excluded from the ruff check gate; see tools/lint_ratchet.py. Only ever edit this DOWN, and only via --update after actually removing findings.",
+  "counts": {
+    "BLE001": 16
+  }
+}

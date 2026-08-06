@@ -1,3 +1,40 @@
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# BLE001 (`except Exception`) is the ONE rule this repo does not gate on, and
+# it is not silently dropped: tools/lint_ratchet.py re-selects it and fails CI
+# if the count ever rises above the recorded baseline.
+#
+# Why it is not a gate. All 16 occurrences are the same deliberate pattern — a
+# per-source or per-stage boundary that logs and continues (worker/ingest/*,
+# optional_stage, the Discord notifier, the yfinance fallback). The whole
+# ingest design is "one flaky source must not take down the run", and the
+# pipeline workflow's own comment says the same. Narrowing these to
+# requests.RequestException would be a REAL behavior change: a shape change in
+# a third-party JSON payload currently skips one adapter, and afterwards would
+# kill the pipeline. That belongs in a deliberate change with its own tests,
+# not smuggled in under a lint pass.
+ignore = ["BLE001"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["worker", "tests"]
+
+# Third-party packages that ship no type information. Scoped to the named
+# modules on purpose: this says "this library has no stubs", not "stop
+# checking our code". Nothing here suppresses an error in worker/ or tests/.
+[[tool.mypy.overrides]]
+module = [
+    "yfinance.*",
+    "feedparser.*",
+    "sklearn.*",
+    "transformers.*",
+    "sentence_transformers.*",
+    "umap.*",
+]
+ignore_missing_imports = true

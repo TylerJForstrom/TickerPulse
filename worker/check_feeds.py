@@ -1,7 +1,8 @@
 """Quick RSS feed health check: python -m worker.check_feeds"""
 
-from worker.ingest.rss import FEEDS
 import feedparser
+
+from worker.ingest.rss import FEEDS
 
 for name, url in FEEDS.items():
     try:

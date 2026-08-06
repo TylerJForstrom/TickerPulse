@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Iterable
 
 from worker.config import settings
 from worker.models import Post
@@ -204,7 +203,7 @@ def score_finbert_local(posts: list[Post], batch_size: int = 32) -> None:
             by_label = {FINBERT_MAP[s["label"]]: s["score"] for s in scores}
             signed = by_label.get("bull", 0) - by_label.get("bear", 0)
             post.sentiment_score = round(signed, 4)
-            post.sentiment = max(by_label, key=by_label.get)
+            post.sentiment = max(by_label, key=by_label.__getitem__)
 
 
 def score_hf_api(posts: list[Post], batch_size: int = 50) -> None:
@@ -228,7 +227,7 @@ def score_hf_api(posts: list[Post], batch_size: int = 50) -> None:
             by_label = {FINBERT_MAP[s["label"]]: s["score"] for s in scores}
             signed = by_label.get("bull", 0) - by_label.get("bear", 0)
             post.sentiment_score = round(signed, 4)
-            post.sentiment = max(by_label, key=by_label.get)
+            post.sentiment = max(by_label, key=by_label.__getitem__)
 
 
 def _finbert_available() -> bool:

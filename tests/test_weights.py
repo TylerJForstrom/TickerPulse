@@ -1,11 +1,11 @@
 """Influence weighting: platform authority × engagement."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from worker.metrics.weights import post_weight, weighted_sentiment
 from worker.models import Post
 
-NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
 
 
 def make(platform, engagement, score):
