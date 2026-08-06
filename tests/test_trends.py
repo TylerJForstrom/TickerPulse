@@ -1,6 +1,6 @@
 """Trend math: velocity, breakout, phases, ratios, windows, lead/lag."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from worker.metrics.correlation import lead_lag
 from worker.metrics.trends import (
@@ -13,7 +13,7 @@ from worker.metrics.trends import (
 )
 from worker.models import Post
 
-NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
 
 
 def make_post(i, hours_ago, ticker="NVDA", sentiment="bull", score=0.6, engagement=10):

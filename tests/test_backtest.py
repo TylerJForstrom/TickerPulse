@@ -1,6 +1,6 @@
 """Flag-replay backtest: event detection, forward returns, summary math."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from worker.metrics.backtest import (
     _close_at,
@@ -10,7 +10,7 @@ from worker.metrics.backtest import (
 )
 from worker.models import Post
 
-NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
 
 
 def hourly_prices(

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -27,9 +27,9 @@ class Post:
 
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
-            self.timestamp = self.timestamp.replace(tzinfo=timezone.utc)
+            self.timestamp = self.timestamp.replace(tzinfo=UTC)
         else:
-            self.timestamp = self.timestamp.astimezone(timezone.utc)
+            self.timestamp = self.timestamp.astimezone(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -37,11 +37,11 @@ class Post:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Post":
+    def from_dict(cls, d: dict[str, Any]) -> Post:
         d = dict(d)
         ts = d["timestamp"]
         if isinstance(ts, str):
-            d["timestamp"] = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            d["timestamp"] = datetime.fromisoformat(ts)
         known = {f for f in cls.__dataclass_fields__}  # tolerate extra keys
         return cls(**{k: v for k, v in d.items() if k in known})
 

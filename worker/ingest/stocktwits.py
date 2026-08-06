@@ -6,8 +6,8 @@ symbol count is capped and errors degrade gracefully."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import requests
 
@@ -58,11 +58,11 @@ class StockTwitsAdapter(Adapter):
                         text=msg.get("body", ""),
                         timestamp=datetime.strptime(
                             msg["created_at"], "%Y-%m-%dT%H:%M:%SZ"
-                        ).replace(tzinfo=timezone.utc),
+                        ).replace(tzinfo=UTC),
                         engagement=int((msg.get("likes") or {}).get("total", 0)),
                         tickers=[s["symbol"] for s in msg.get("symbols", [])],
                         url=f"https://stocktwits.com/{(msg.get('user') or {}).get('username', '')}/message/{msg['id']}",
-                        sentiment=ST_SENTIMENT.get(st_sent),
+                        sentiment=(ST_SENTIMENT.get(st_sent) if st_sent else None),
                     )
             except Exception as exc:
                 print(f"  stocktwits {sym} failed: {exc}")

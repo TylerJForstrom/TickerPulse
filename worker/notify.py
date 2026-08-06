@@ -8,6 +8,7 @@ pings once, not every 15 minutes."""
 from __future__ import annotations
 
 import os
+from typing import Any
 
 KIND_EMOJI = {
     "mention_spike": "🚨",
@@ -41,7 +42,7 @@ def send_discord_alerts(
         f"{KIND_EMOJI.get(a['kind'], '⚡')} **${a['ticker']}** — {a['message']}"
         for a in fresh
     ]
-    payload = {
+    payload: dict[str, Any] = {
         "username": "TickerPulse",
         "embeds": [
             {

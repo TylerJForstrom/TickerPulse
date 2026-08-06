@@ -13,7 +13,8 @@ instead of vibes — the dashboard shows the result either way.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from worker.metrics.trends import compute_ticker_trends
 from worker.models import Post
@@ -25,7 +26,7 @@ MAX_CANDLE_GAP_H = 30.0  # tolerate weekends/closed market when
 
 
 def _parse_ts(iso: str) -> datetime:
-    return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return datetime.fromisoformat(iso)
 
 
 def _close_at(prices: list[dict], when: datetime, max_gap_h: float = MAX_CANDLE_GAP_H):
@@ -52,7 +53,7 @@ def replay_flags(
     history_hours: int = 168,
 ) -> list[dict]:
     """Walk back through history flagging emerging tickers as-of each step."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     events: list[dict] = []
     seen: set[tuple[str, str]] = set()  # (ticker, day-bucket) — one event per flare-up
     # Oldest as-of needs at least one window of history before it.
@@ -121,7 +122,7 @@ def score_events(
 
 
 def summarize(events: list[dict], horizons: tuple[int, ...] = HORIZONS) -> dict:
-    summary = {"events": len(events), "horizons": {}}
+    summary: dict[str, Any] = {"events": len(events), "horizons": {}}
     for h in horizons:
         rets = [
             e["returns"][str(h)] for e in events if e["returns"].get(str(h)) is not None
@@ -175,5 +176,5 @@ def run_backtest(
             "breakout_floor": BREAKOUT_FLOOR,
             "horizons": list(HORIZONS),
         },
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }

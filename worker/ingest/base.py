@@ -7,12 +7,12 @@ of failing — demo mode is just "no adapters available except the sample"."""
 from __future__ import annotations
 
 import abc
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Iterable, Iterator, Type
+from collections.abc import Callable, Iterable, Iterator
+from datetime import UTC, datetime, timedelta
 
 from worker.models import Post
 
-registry: dict[str, Type["Adapter"]] = {}
+registry: dict[str, type[Adapter]] = {}
 
 
 def drain_pages(
@@ -41,11 +41,9 @@ def drain_pages(
     `pages` yields one list of items per page (fetched lazily); `ts` maps an
     item to its tz-aware UTC timestamp. Returns the concatenated items.
     """
-    horizon = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
+    horizon = datetime.now(UTC) - timedelta(hours=lookback_hours)
     items: list = []
-    pages_used = 0
-    for page in pages:
-        pages_used += 1
+    for pages_used, page in enumerate(pages, start=1):
         items.extend(page)
         if not page or min(ts(item) for item in page) <= horizon:
             return items  # window covered or source exhausted

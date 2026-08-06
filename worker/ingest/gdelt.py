@@ -7,8 +7,8 @@ headlines carry tickers/companies for the extractor."""
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import requests
 
@@ -27,7 +27,7 @@ HEADERS = {"User-Agent": "TickerPulse/1.0 (research project)"}
 
 def _parse_seendate(s: str) -> datetime:
     # "20260611T143000Z"
-    return datetime.strptime(s, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    return datetime.strptime(s, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
 
 
 class GdeltAdapter(Adapter):
@@ -43,20 +43,16 @@ class GdeltAdapter(Adapter):
         for i, q in enumerate(QUERIES):
             if i:
                 time.sleep(8)  # GDELT free tier ~1 request / 5s per IP; be generous
+            params: dict[str, str | int] = {
+                "query": q,
+                "mode": "artlist",
+                "format": "json",
+                "maxrecords": 40,
+                "timespan": "1d",
+                "sort": "datedesc",
+            }
             try:
-                resp = requests.get(
-                    API,
-                    params={
-                        "query": q,
-                        "mode": "artlist",
-                        "format": "json",
-                        "maxrecords": 40,
-                        "timespan": "1d",
-                        "sort": "datedesc",
-                    },
-                    headers=HEADERS,
-                    timeout=30,
-                )
+                resp = requests.get(API, params=params, headers=HEADERS, timeout=30)
                 if resp.status_code != 200:
                     print(f"  gdelt '{q[:20]}': HTTP {resp.status_code}")
                     continue
@@ -70,7 +66,7 @@ class GdeltAdapter(Adapter):
                     try:
                         ts = _parse_seendate(art["seendate"])
                     except (KeyError, ValueError):
-                        ts = datetime.now(timezone.utc)
+                        ts = datetime.now(UTC)
                     yield Post(
                         id=f"gdelt:{uid}",
                         platform="gdelt",

@@ -19,7 +19,8 @@ import json
 import math
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 from pathlib import Path
 
 OUT_DEFAULT = Path(__file__).parent / "data" / "sample_posts.json"
@@ -413,7 +414,7 @@ def engagement_for(rng: random.Random, platform: str) -> int:
 
 def generate(n_target: int, seed: int, now: datetime | None = None) -> list[dict]:
     rng = random.Random(seed)
-    now = now or datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    now = now or datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
     # Total expected posts under multipliers; scale rates to hit n_target.
     expected = 0.0
@@ -437,17 +438,23 @@ def generate(n_target: int, seed: int, now: datetime | None = None) -> list[dict
             ev_active = max(nar.events, key=lambda e: event_factor(e, h), default=None)
             ev_weight = event_factor(ev_active, h) if ev_active else 0.0
             for _ in range(count):
-                use_event = (
-                    ev_active is not None and ev_weight > 0.6 and rng.random() < 0.8
+                # Bind the event itself rather than a bare bool: `use_event`
+                # encoded "ev_active is not None" in a way neither a reader nor
+                # a type checker could follow back to the attribute accesses
+                # below, which is how a None dereference hides.
+                event = (
+                    ev_active
+                    if ev_active is not None and ev_weight > 0.6 and rng.random() < 0.8
+                    else None
                 )
                 mix = (
-                    ev_active.sentiment
-                    if use_event and ev_active.sentiment
+                    event.sentiment
+                    if event is not None and event.sentiment
                     else nar.sentiment
                 )
                 theme = (
-                    ev_active.theme
-                    if use_event and ev_active.theme
+                    event.theme
+                    if event is not None and event.theme
                     else (
                         rng.choice(nar.themes)
                         if nar.themes and rng.random() < 0.4
@@ -538,7 +545,7 @@ def price_echo_posts(rng: random.Random, now: datetime, start_uid: int) -> list[
         # join, so echoes are only placed on candle hours.
         candle_hours = {r["ts"][:13] for r in rows}
         rets = []
-        for prev_row, row in zip(rows, rows[1:]):
+        for prev_row, row in pairwise(rows):
             ts = datetime.fromisoformat(row["ts"])
             if ts < week_ago or ts > now:
                 continue
@@ -619,7 +626,7 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
         json.dumps(
-            {"generated_at": datetime.now(timezone.utc).isoformat(), "posts": posts},
+            {"generated_at": datetime.now(UTC).isoformat(), "posts": posts},
             indent=1,
         ),
         encoding="utf-8",

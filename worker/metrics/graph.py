@@ -17,7 +17,7 @@ def compute_graph(posts: list[Post], min_mentions: int = 5, min_edge: int = 2) -
     mentions = Counter(t for p in posts for t in p.tickers)
     keep = {t for t, n in mentions.items() if n >= min_mentions}
 
-    edges = Counter()
+    edges: Counter[tuple[str, str]] = Counter()
     for p in posts:
         uniq = sorted({t for t in p.tickers if t in keep})
         for a, b in combinations(uniq, 2):

@@ -10,7 +10,7 @@ renders the aligned series plus a one-line human readout.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 MAX_LAG_HOURS = 12
 
@@ -44,7 +44,7 @@ def align_series(buckets: list[dict], prices: list[dict]) -> list[dict]:
             _hour_key(buckets[-1]["bucket_start"]),
         )
         prices = [c for c in prices if lo <= _hour_key(c["ts"]) <= hi]
-    rows = []
+    rows: list[dict[str, object]] = []
     for candle in prices:
         key = _hour_key(candle["ts"])
         b = mentions.get(key)
@@ -120,5 +120,5 @@ def compute_correlation(ticker: str, buckets: list[dict], prices: list[dict]) ->
         **ll,
         "readout": readout(ticker, ll),
         "series": rows[-7 * 24 :],  # trailing week for the overlay chart
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }

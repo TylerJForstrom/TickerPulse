@@ -96,7 +96,7 @@ def author_hash(platform: str, author: str) -> str:
     on two platforms never links. Unsalted on purpose: the aggregates must be
     joinable across days and runs (track-record accrual), and the archived
     rows never carry the raw username."""
-    return hashlib.sha256(f"{platform}:{author}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(f"{platform}:{author}".encode()).hexdigest()[:16]
 
 
 def export_author_daily(

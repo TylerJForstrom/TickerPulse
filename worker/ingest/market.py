@@ -10,30 +10,31 @@ from __future__ import annotations
 
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from worker.nlp.tickers import load_dictionary, ticker_sector
+from worker.nlp.tickers import ticker_sector
 
 CRYPTO_SUFFIX = "-USD"
 
+# Pure coins, which Yahoo quotes as <COIN>-USD pairs.
+#
+# This set — not the ticker dictionary — decides who gets the suffix. The
+# dictionary's "Crypto" sector deliberately covers crypto-adjacent EQUITIES
+# too (COIN, IBIT, MARA, MSTR, RIOT); asking Yahoo for "MSTR-USD" returns
+# nothing and the caller silently falls back to a synthetic random walk, so
+# a real ticker would quietly start reporting fake prices.
+COINS = frozenset(
+    {"BTC", "ETH", "SOL", "DOGE", "XRP", "ADA", "AVAX", "LINK", "SHIB", "PEPE"}
+)
+
 
 def yahoo_symbol(ticker: str) -> str:
-    if ticker_sector(ticker) == "Crypto" and not ticker.endswith(CRYPTO_SUFFIX):
-        tickers, _, _ = load_dictionary()
-        # Stocks in the crypto sector (COIN, MSTR…) stay as-is; pure coins map.
-        if ticker in {
-            "BTC",
-            "ETH",
-            "SOL",
-            "DOGE",
-            "XRP",
-            "ADA",
-            "AVAX",
-            "LINK",
-            "SHIB",
-            "PEPE",
-        }:
-            return f"{ticker}{CRYPTO_SUFFIX}"
+    if (
+        ticker in COINS
+        and ticker_sector(ticker) == "Crypto"
+        and not ticker.endswith(CRYPTO_SUFFIX)
+    ):
+        return f"{ticker}{CRYPTO_SUFFIX}"
     return ticker.replace(".", "-")  # BRK.B → BRK-B
 
 
@@ -57,10 +58,10 @@ def fetch_prices(
                 for ts, row in df.iterrows():
                     ts = ts.to_pydatetime()
                     if ts.tzinfo is None:
-                        ts = ts.replace(tzinfo=timezone.utc)
+                        ts = ts.replace(tzinfo=UTC)
                     rows.append(
                         {
-                            "ts": ts.astimezone(timezone.utc).isoformat(),
+                            "ts": ts.astimezone(UTC).isoformat(),
                             "open": round(float(row["Open"]), 4),
                             "high": round(float(row["High"]), 4),
                             "low": round(float(row["Low"]), 4),
@@ -113,7 +114,7 @@ def synthetic_prices(ticker: str, days: int = 30) -> list[dict]:
     """Deterministic hourly random walk with mild drift — same seed per
     ticker so demo artifacts are reproducible."""
     rng = random.Random(hash(ticker) % (2**31))
-    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
     n = days * 24
     price = float(ANCHORS.get(ticker, rng.uniform(20, 400)))
     drift = rng.uniform(-0.0001, 0.0004)

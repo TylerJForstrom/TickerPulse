@@ -10,9 +10,9 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 from worker.ingest.base import Adapter
 from worker.models import Post
@@ -43,8 +43,8 @@ def _parse_ts(value) -> datetime:
     if isinstance(value, (int, float)) or (
         isinstance(value, str) and value.replace(".", "", 1).isdigit()
     ):
-        return datetime.fromtimestamp(float(value), tz=timezone.utc)
-    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return datetime.fromtimestamp(float(value), tz=UTC)
+    return datetime.fromisoformat(str(value))
 
 
 def row_to_post(row: dict, default_platform: str = "sample") -> Post | None:

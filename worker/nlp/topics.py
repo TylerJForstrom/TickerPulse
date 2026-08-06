@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 
 import numpy as np
 
@@ -26,15 +27,98 @@ SERIES_HOURS = 72  # trailing window for per-topic activity series
 SERIES_BUCKET_H = 3  # series resolution
 
 MAX_POSTS = 3000  # embedding budget per run
-STOPWORDS = set(
-    """
-a about after all also an and any are as at be been before being but by can
-could did do does for from had has have he her his how i if in into is it its
-just like me more most my no not now of on one or our out over so some than
-that the their them then there these they this to up us was we were what when
-which who will with would you your yours im its dont thats whats theres
-""".split()
-)
+STOPWORDS = {
+    "a",
+    "about",
+    "after",
+    "all",
+    "also",
+    "an",
+    "and",
+    "any",
+    "are",
+    "as",
+    "at",
+    "be",
+    "been",
+    "before",
+    "being",
+    "but",
+    "by",
+    "can",
+    "could",
+    "did",
+    "do",
+    "does",
+    "for",
+    "from",
+    "had",
+    "has",
+    "have",
+    "he",
+    "her",
+    "his",
+    "how",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "just",
+    "like",
+    "me",
+    "more",
+    "most",
+    "my",
+    "no",
+    "not",
+    "now",
+    "of",
+    "on",
+    "one",
+    "or",
+    "our",
+    "out",
+    "over",
+    "so",
+    "some",
+    "than",
+    "that",
+    "the",
+    "their",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "to",
+    "up",
+    "us",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "which",
+    "who",
+    "will",
+    "with",
+    "would",
+    "you",
+    "your",
+    "yours",
+    # Apostrophe-stripped contractions. "its" would belong here too (it's),
+    # but it is already listed above as the possessive — same token once the
+    # apostrophe is gone, so listing it twice is redundant.
+    "im",
+    "dont",
+    "thats",
+    "whats",
+    "theres",
+}
 
 
 def _clean_for_vocab(text: str) -> str:
@@ -56,8 +140,8 @@ def _st_available() -> bool:
 def embed_and_project(texts: list[str], backend: str) -> np.ndarray:
     """Return (n, 2) coordinates for the landscape map."""
     if backend == "sentence-transformers":
-        from sentence_transformers import SentenceTransformer
         import umap
+        from sentence_transformers import SentenceTransformer
 
         model = SentenceTransformer("all-MiniLM-L6-v2")
         emb = model.encode(texts, batch_size=64, show_progress_bar=False)
@@ -71,8 +155,8 @@ def embed_and_project(texts: list[str], backend: str) -> np.ndarray:
         return reducer.fit_transform(emb)
 
     # scikit-learn fallback: TF-IDF → SVD(50) → t-SNE(2)
-    from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.decomposition import TruncatedSVD
+    from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.manifold import TSNE
 
     vec = TfidfVectorizer(max_features=4000, ngram_range=(1, 2), min_df=2)
@@ -98,7 +182,7 @@ def _terms(doc: str) -> Counter:
     make far better topic labels than single words."""
     tokens = doc.split()
     counts = Counter(tokens)
-    counts.update(f"{a} {b}" for a, b in zip(tokens, tokens[1:]))
+    counts.update(f"{a} {b}" for a, b in pairwise(tokens))
     return counts
 
 
@@ -113,7 +197,7 @@ def ctfidf_labels(
         for c in clusters
     }
     tf: dict[int, Counter] = {c: _terms(doc) for c, doc in docs_per_cluster.items()}
-    df = Counter()
+    df: Counter[str] = Counter()
     for counts in tf.values():
         df.update(counts.keys())
     n_clusters = max(1, len(clusters))
@@ -156,7 +240,7 @@ def compute_topics(posts: list[Post], backend: str | None = None) -> dict:
     labels = cluster_points(coords)
     term_labels = ctfidf_labels(texts, labels)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     n_series = SERIES_HOURS // SERIES_BUCKET_H
     series_start = now - timedelta(hours=SERIES_HOURS)
 

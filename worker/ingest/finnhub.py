@@ -5,8 +5,8 @@ per run). https://finnhub.io/register"""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import requests
 
@@ -50,7 +50,7 @@ class FinnhubAdapter(Adapter):
                         author=item.get("source", "finnhub"),
                         text=headline + (f". {summary}" if summary else ""),
                         timestamp=datetime.fromtimestamp(
-                            item.get("datetime", 0), tz=timezone.utc
+                            item.get("datetime", 0), tz=UTC
                         ),
                         engagement=0,
                         url=item.get("url", ""),

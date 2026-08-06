@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import requests
 
@@ -64,10 +64,10 @@ class EdgarAdapter(Adapter):
                         from time import mktime
 
                         ts = datetime.fromtimestamp(
-                            mktime(entry.updated_parsed), tz=timezone.utc
+                            mktime(entry.updated_parsed), tz=UTC
                         )
                     else:
-                        ts = datetime.now(timezone.utc)
+                        ts = datetime.now(UTC)
                     uid = hashlib.sha1((entry.get("id") or title).encode()).hexdigest()[
                         :16
                     ]

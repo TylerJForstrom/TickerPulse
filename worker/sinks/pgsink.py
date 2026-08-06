@@ -7,7 +7,7 @@ windows are harmless."""
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from worker.config import settings
 from worker.models import Post
@@ -70,7 +70,7 @@ def upsert_posts(conn, posts: list[Post]) -> int:
 
 
 def load_recent_posts(conn, hours: int = 168) -> list[Post]:
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = datetime.now(UTC) - timedelta(hours=hours)
     with conn.cursor() as cur:
         cur.execute(
             """select id, platform, source, author, text, url, lang, engagement,

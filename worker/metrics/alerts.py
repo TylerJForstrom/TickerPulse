@@ -3,11 +3,11 @@ and brand-new entrants to the conversation."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def detect_alerts(trends: dict[str, dict]) -> list[dict]:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     alerts: list[dict] = []
     for t, m in trends.items():
         if m["breakout_score"] >= 2.0 and m["mentions"] >= 10:
