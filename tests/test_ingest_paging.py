@@ -51,6 +51,7 @@ class FakeResp:
 
 # --- drain_pages ------------------------------------------------------------
 
+
 def test_drain_stops_once_horizon_is_covered(capsys):
     feed = PageFeed([[post("a", 1)], [post("b", 7)], [post("never", 9)]])
     items = drain_pages(iter(feed), lookback_hours=6, max_pages=10, label="x")
@@ -85,12 +86,14 @@ def test_drain_saturation_at_page_cap(capsys):
 
 def test_drain_custom_timestamp_key():
     pages = iter([[{"t": _ago(1)}], [{"t": _ago(7)}], [{"t": _ago(9)}]])
-    items = drain_pages(pages, lookback_hours=6, max_pages=10, label="x",
-                        ts=lambda item: item["t"])
+    items = drain_pages(
+        pages, lookback_hours=6, max_pages=10, label="x", ts=lambda item: item["t"]
+    )
     assert len(items) == 2
 
 
 # --- reddit -----------------------------------------------------------------
+
 
 def test_reddit_new_paginates_until_horizon(monkeypatch):
     monkeypatch.setattr(settings, "reddit_subreddits", ["stocks"])
@@ -98,10 +101,18 @@ def test_reddit_new_paginates_until_horizon(monkeypatch):
     monkeypatch.setattr(RedditAdapter, "_token", lambda self: "tok")
 
     def child(cid, age_hours):
-        return {"data": {"id": cid, "title": f"post {cid}", "selftext": "",
-                         "author": "u", "created_utc": _ago(age_hours).timestamp(),
-                         "score": 1, "num_comments": 0,
-                         "permalink": f"/r/stocks/{cid}"}}
+        return {
+            "data": {
+                "id": cid,
+                "title": f"post {cid}",
+                "selftext": "",
+                "author": "u",
+                "created_utc": _ago(age_hours).timestamp(),
+                "score": 1,
+                "num_comments": 0,
+                "permalink": f"/r/stocks/{cid}",
+            }
+        }
 
     calls = []
 
@@ -110,7 +121,9 @@ def test_reddit_new_paginates_until_horizon(monkeypatch):
         calls.append((url, dict(params)))
         if url.endswith("/new"):
             if "after" not in params:
-                return FakeResp({"data": {"children": [child("n1", 1)], "after": "t3_n1"}})
+                return FakeResp(
+                    {"data": {"children": [child("n1", 1)], "after": "t3_n1"}}
+                )
             assert params["after"] == "t3_n1"
             # oldest item beyond the 6h horizon -> pagination must stop here
             return FakeResp({"data": {"children": [child("n2", 7)], "after": "t3_n2"}})
@@ -125,6 +138,7 @@ def test_reddit_new_paginates_until_horizon(monkeypatch):
 
 # --- bluesky ----------------------------------------------------------------
 
+
 def test_bluesky_paginates_dedupes_and_ids_are_deterministic(monkeypatch):
     monkeypatch.setattr(settings, "ingest_lookback_hours", 6)
     monkeypatch.setattr(BlueskyAdapter, "_session", lambda self: {"accessJwt": "j"})
@@ -132,10 +146,13 @@ def test_bluesky_paginates_dedupes_and_ids_are_deterministic(monkeypatch):
 
     def item(rkey, age_hours):
         created = _ago(age_hours).isoformat()
-        return {"uri": f"at://did:plc:abc/app.bsky.feed.post/{rkey}",
-                "record": {"text": "hi", "createdAt": created, "langs": ["en"]},
-                "author": {"handle": "u.bsky.social"},
-                "likeCount": 0, "repostCount": 0}
+        return {
+            "uri": f"at://did:plc:abc/app.bsky.feed.post/{rkey}",
+            "record": {"text": "hi", "createdAt": created, "langs": ["en"]},
+            "author": {"handle": "u.bsky.social"},
+            "likeCount": 0,
+            "repostCount": 0,
+        }
 
     def fake_get(url, params=None, headers=None, timeout=None):
         params = params or {}
@@ -148,8 +165,10 @@ def test_bluesky_paginates_dedupes_and_ids_are_deterministic(monkeypatch):
     monkeypatch.setattr(bluesky_mod.requests, "get", fake_get)
     first = [p.id for p in BlueskyAdapter().fetch()]
     second = [p.id for p in BlueskyAdapter().fetch()]
-    assert first == ["bluesky:aaa:" + first[0].rsplit(":", 1)[-1],
-                     "bluesky:bbb:" + first[1].rsplit(":", 1)[-1]]
+    assert first == [
+        "bluesky:aaa:" + first[0].rsplit(":", 1)[-1],
+        "bluesky:bbb:" + first[1].rsplit(":", 1)[-1],
+    ]
     # sha1-derived: stable across runs (builtin hash() is salted per process,
     # which made every run mint fresh ids and pile up duplicate DB rows)
     assert first == second
@@ -158,16 +177,23 @@ def test_bluesky_paginates_dedupes_and_ids_are_deterministic(monkeypatch):
 
 # --- mastodon ---------------------------------------------------------------
 
+
 def test_mastodon_pages_past_filtered_content(monkeypatch):
     monkeypatch.setattr(settings, "ingest_lookback_hours", 6)
     monkeypatch.setattr(mastodon_mod, "TAGS", ["stocks"])
     monkeypatch.setattr(mastodon_mod, "PAGE_LIMIT", 2)
 
     def status(sid, age_hours, lang):
-        return {"id": sid, "content": "<p>market talk long enough to keep</p>",
-                "created_at": _ago(age_hours).isoformat(),
-                "language": lang, "account": {"acct": "someone"}, "url": "u",
-                "favourites_count": 0, "reblogs_count": 0}
+        return {
+            "id": sid,
+            "content": "<p>market talk long enough to keep</p>",
+            "created_at": _ago(age_hours).isoformat(),
+            "language": lang,
+            "account": {"acct": "someone"},
+            "url": "u",
+            "favourites_count": 0,
+            "reblogs_count": 0,
+        }
 
     calls = []
 

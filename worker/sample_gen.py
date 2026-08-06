@@ -131,13 +131,34 @@ MACRO_NOTICKER = [
 ]
 
 AUTHORS = [
-    "DeepValueDegen", "thetagang_steve", "MacroMarx", "QuietCompounder",
-    "VolHunterX", "dipbuyer2021", "OptionsOracle", "ChartWitch",
-    "fundamental_frank", "moon_mission_cmdr", "BearishBeth", "IndexAndChill",
-    "GammaGoblin", "SatoshiSon", "DivGrowthDan", "ruth_lessinvestor",
-    "TendieTracker", "FOMOsapiens", "smallcap_sniper", "PermabullPete",
-    "QuantJanitor", "drawdown_dave", "LadyLiquidity", "thesis_drift",
-    "CashSecuredKev", "RiskParityRita", "AlphaSeeker88", "BondVigilante_",
+    "DeepValueDegen",
+    "thetagang_steve",
+    "MacroMarx",
+    "QuietCompounder",
+    "VolHunterX",
+    "dipbuyer2021",
+    "OptionsOracle",
+    "ChartWitch",
+    "fundamental_frank",
+    "moon_mission_cmdr",
+    "BearishBeth",
+    "IndexAndChill",
+    "GammaGoblin",
+    "SatoshiSon",
+    "DivGrowthDan",
+    "ruth_lessinvestor",
+    "TendieTracker",
+    "FOMOsapiens",
+    "smallcap_sniper",
+    "PermabullPete",
+    "QuantJanitor",
+    "drawdown_dave",
+    "LadyLiquidity",
+    "thesis_drift",
+    "CashSecuredKev",
+    "RiskParityRita",
+    "AlphaSeeker88",
+    "BondVigilante_",
 ]
 
 SUBREDDITS = ["wallstreetbets", "stocks", "investing", "options", "CryptoCurrency"]
@@ -146,6 +167,7 @@ SUBREDDITS = ["wallstreetbets", "stocks", "investing", "options", "CryptoCurrenc
 @dataclass
 class Event:
     """A chatter spike: starts `hours_ago`, decays over `duration` hours."""
+
     hours_ago: float
     duration: float
     multiplier: float
@@ -157,12 +179,17 @@ class Event:
 class Narrative:
     ticker: str
     name: str
-    base_rate: float                       # posts/hour baseline (all platforms)
+    base_rate: float  # posts/hour baseline (all platforms)
     sentiment: tuple[float, float, float]  # bull, bear, neutral mix
     themes: list[str] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
     platforms: dict[str, float] = field(
-        default_factory=lambda: {"stocktwits": 0.45, "reddit": 0.38, "bluesky": 0.12, "hackernews": 0.05}
+        default_factory=lambda: {
+            "stocktwits": 0.45,
+            "reddit": 0.38,
+            "bluesky": 0.12,
+            "hackernews": 0.05,
+        }
     )
     co_mentions: list[str] = field(default_factory=list)
     crypto: bool = False
@@ -170,59 +197,173 @@ class Narrative:
 
 NARRATIVES = [
     # Flagship arc: earnings blowout ~44h ago → huge breakout, still elevated.
-    Narrative("NVDA", "NVIDIA", 4.0, (0.50, 0.18, 0.32), ["ai", "earnings"],
-              [Event(44, 36, 7.0, (0.70, 0.10, 0.20), "earnings"),
-               Event(20, 18, 3.5, (0.65, 0.12, 0.23), "ai")],
-              co_mentions=["AMD", "SMCI", "TSM", "MSFT"]),
+    Narrative(
+        "NVDA",
+        "NVIDIA",
+        4.0,
+        (0.50, 0.18, 0.32),
+        ["ai", "earnings"],
+        [
+            Event(44, 36, 7.0, (0.70, 0.10, 0.20), "earnings"),
+            Event(20, 18, 3.5, (0.65, 0.12, 0.23), "ai"),
+        ],
+        co_mentions=["AMD", "SMCI", "TSM", "MSFT"],
+    ),
     # Fresh squeeze igniting *right now* → "emerging" flag + spike alert.
-    Narrative("GME", "GameStop", 1.5, (0.55, 0.15, 0.30), ["squeeze"],
-              [Event(5, 18, 14.0, (0.78, 0.08, 0.14), "squeeze")],
-              co_mentions=["AMC"]),
+    Narrative(
+        "GME",
+        "GameStop",
+        1.5,
+        (0.55, 0.15, 0.30),
+        ["squeeze"],
+        [Event(5, 18, 14.0, (0.78, 0.08, 0.14), "squeeze")],
+        co_mentions=["AMC"],
+    ),
     # Controversy peaked 4 days ago, now fading → bearish, "fading" phase.
-    Narrative("TSLA", "Tesla", 3.5, (0.30, 0.45, 0.25), ["evs"],
-              [Event(96, 60, 4.0, (0.18, 0.62, 0.20), "evs")],
-              co_mentions=["RIVN", "NIO", "F"]),
+    Narrative(
+        "TSLA",
+        "Tesla",
+        3.5,
+        (0.30, 0.45, 0.25),
+        ["evs"],
+        [Event(96, 60, 4.0, (0.18, 0.62, 0.20), "evs")],
+        co_mentions=["RIVN", "NIO", "F"],
+    ),
     # Steady AI riser, bullish drift, modest event.
-    Narrative("PLTR", "Palantir", 1.8, (0.58, 0.16, 0.26), ["ai"],
-              [Event(30, 30, 2.2, theme="ai")], co_mentions=["NVDA", "MSFT"]),
+    Narrative(
+        "PLTR",
+        "Palantir",
+        1.8,
+        (0.58, 0.16, 0.26),
+        ["ai"],
+        [Event(30, 30, 2.2, theme="ai")],
+        co_mentions=["NVDA", "MSFT"],
+    ),
     # Accounting drama → bearish spike 3 days ago.
-    Narrative("SMCI", "Super Micro", 0.9, (0.25, 0.55, 0.20), ["ai"],
-              [Event(70, 30, 5.0, (0.12, 0.72, 0.16))], co_mentions=["NVDA", "DELL"]),
+    Narrative(
+        "SMCI",
+        "Super Micro",
+        0.9,
+        (0.25, 0.55, 0.20),
+        ["ai"],
+        [Event(70, 30, 5.0, (0.12, 0.72, 0.16))],
+        co_mentions=["NVDA", "DELL"],
+    ),
     # Crypto rally: BTC leads, ETH/COIN follow.
-    Narrative("BTC", "Bitcoin", 3.0, (0.58, 0.18, 0.24), ["crypto"],
-              [Event(56, 48, 3.0, (0.68, 0.12, 0.20), "crypto")],
-              co_mentions=["ETH", "COIN", "MSTR"], crypto=True),
-    Narrative("ETH", "Ethereum", 1.6, (0.55, 0.18, 0.27), ["crypto"],
-              [Event(48, 40, 2.5, theme="crypto")], co_mentions=["BTC", "SOL"], crypto=True),
-    Narrative("COIN", "Coinbase", 1.0, (0.52, 0.22, 0.26), ["crypto"],
-              [Event(50, 40, 2.4, theme="crypto")], co_mentions=["BTC", "MSTR", "HOOD"]),
-    Narrative("MSTR", "MicroStrategy", 0.8, (0.50, 0.26, 0.24), ["crypto"],
-              [Event(52, 40, 2.6, theme="crypto")], co_mentions=["BTC"]),
+    Narrative(
+        "BTC",
+        "Bitcoin",
+        3.0,
+        (0.58, 0.18, 0.24),
+        ["crypto"],
+        [Event(56, 48, 3.0, (0.68, 0.12, 0.20), "crypto")],
+        co_mentions=["ETH", "COIN", "MSTR"],
+        crypto=True,
+    ),
+    Narrative(
+        "ETH",
+        "Ethereum",
+        1.6,
+        (0.55, 0.18, 0.27),
+        ["crypto"],
+        [Event(48, 40, 2.5, theme="crypto")],
+        co_mentions=["BTC", "SOL"],
+        crypto=True,
+    ),
+    Narrative(
+        "COIN",
+        "Coinbase",
+        1.0,
+        (0.52, 0.22, 0.26),
+        ["crypto"],
+        [Event(50, 40, 2.4, theme="crypto")],
+        co_mentions=["BTC", "MSTR", "HOOD"],
+    ),
+    Narrative(
+        "MSTR",
+        "MicroStrategy",
+        0.8,
+        (0.50, 0.26, 0.24),
+        ["crypto"],
+        [Event(52, 40, 2.6, theme="crypto")],
+        co_mentions=["BTC"],
+    ),
     # Bad trial data → bear spike fading.
-    Narrative("MRNA", "Moderna", 0.5, (0.20, 0.58, 0.22), ["pharma"],
-              [Event(80, 26, 4.5, (0.10, 0.74, 0.16), "pharma")], co_mentions=["PFE"]),
+    Narrative(
+        "MRNA",
+        "Moderna",
+        0.5,
+        (0.20, 0.58, 0.22),
+        ["pharma"],
+        [Event(80, 26, 4.5, (0.10, 0.74, 0.16), "pharma")],
+        co_mentions=["PFE"],
+    ),
     # GLP-1 secular bull.
-    Narrative("LLY", "Eli Lilly", 0.8, (0.60, 0.14, 0.26), ["pharma"],
-              [Event(36, 30, 1.8, theme="pharma")], co_mentions=["NVO"]),
+    Narrative(
+        "LLY",
+        "Eli Lilly",
+        0.8,
+        (0.60, 0.14, 0.26),
+        ["pharma"],
+        [Event(36, 30, 1.8, theme="pharma")],
+        co_mentions=["NVO"],
+    ),
     # Mega-cap steady baseline.
     Narrative("AAPL", "Apple", 2.6, (0.40, 0.28, 0.32), ["earnings"]),
-    Narrative("MSFT", "Microsoft", 2.2, (0.48, 0.20, 0.32), ["ai"], co_mentions=["NVDA"]),
+    Narrative(
+        "MSFT", "Microsoft", 2.2, (0.48, 0.20, 0.32), ["ai"], co_mentions=["NVDA"]
+    ),
     Narrative("AMZN", "Amazon", 1.6, (0.45, 0.24, 0.31), ["earnings"]),
     Narrative("META", "Meta Platforms", 1.5, (0.44, 0.26, 0.30), ["ai"]),
     Narrative("GOOGL", "Alphabet", 1.7, (0.42, 0.28, 0.30), ["ai"]),
-    Narrative("AMD", "AMD", 1.4, (0.46, 0.26, 0.28), ["ai"],
-              [Event(40, 30, 1.8, theme="ai")], co_mentions=["NVDA", "INTC"]),
+    Narrative(
+        "AMD",
+        "AMD",
+        1.4,
+        (0.46, 0.26, 0.28),
+        ["ai"],
+        [Event(40, 30, 1.8, theme="ai")],
+        co_mentions=["NVDA", "INTC"],
+    ),
     # Macro / index chatter around a CPI print ~28h ago.
-    Narrative("SPY", "S&P 500 ETF", 2.8, (0.34, 0.36, 0.30), ["fed"],
-              [Event(28, 20, 3.0, (0.30, 0.44, 0.26), "fed")], co_mentions=["QQQ", "IWM"]),
-    Narrative("QQQ", "Nasdaq 100 ETF", 1.8, (0.36, 0.34, 0.30), ["fed"],
-              [Event(28, 20, 2.6, theme="fed")], co_mentions=["SPY"]),
+    Narrative(
+        "SPY",
+        "S&P 500 ETF",
+        2.8,
+        (0.34, 0.36, 0.30),
+        ["fed"],
+        [Event(28, 20, 3.0, (0.30, 0.44, 0.26), "fed")],
+        co_mentions=["QQQ", "IWM"],
+    ),
+    Narrative(
+        "QQQ",
+        "Nasdaq 100 ETF",
+        1.8,
+        (0.36, 0.34, 0.30),
+        ["fed"],
+        [Event(28, 20, 2.6, theme="fed")],
+        co_mentions=["SPY"],
+    ),
     # Defense / space steady.
-    Narrative("RKLB", "Rocket Lab", 0.7, (0.56, 0.16, 0.28), ["defense"],
-              [Event(60, 36, 1.7, theme="defense")], co_mentions=["LMT", "BA"]),
+    Narrative(
+        "RKLB",
+        "Rocket Lab",
+        0.7,
+        (0.56, 0.16, 0.28),
+        ["defense"],
+        [Event(60, 36, 1.7, theme="defense")],
+        co_mentions=["LMT", "BA"],
+    ),
     Narrative("BA", "Boeing", 0.9, (0.26, 0.48, 0.26), ["defense"]),
     # Fintech mid-tier.
-    Narrative("HOOD", "Robinhood", 0.8, (0.50, 0.24, 0.26), ["earnings"], co_mentions=["COIN", "SOFI"]),
+    Narrative(
+        "HOOD",
+        "Robinhood",
+        0.8,
+        (0.50, 0.24, 0.26),
+        ["earnings"],
+        co_mentions=["COIN", "SOFI"],
+    ),
     Narrative("SOFI", "SoFi", 0.9, (0.52, 0.22, 0.26), [], co_mentions=["HOOD"]),
     Narrative("GLD", "Gold ETF", 0.6, (0.46, 0.24, 0.30), ["fed"]),
 ]
@@ -296,48 +437,73 @@ def generate(n_target: int, seed: int, now: datetime | None = None) -> list[dict
             ev_active = max(nar.events, key=lambda e: event_factor(e, h), default=None)
             ev_weight = event_factor(ev_active, h) if ev_active else 0.0
             for _ in range(count):
-                use_event = ev_active is not None and ev_weight > 0.6 and rng.random() < 0.8
-                mix = (ev_active.sentiment if use_event and ev_active.sentiment else nar.sentiment)
-                theme = (ev_active.theme if use_event and ev_active.theme
-                         else (rng.choice(nar.themes) if nar.themes and rng.random() < 0.4 else None))
+                use_event = (
+                    ev_active is not None and ev_weight > 0.6 and rng.random() < 0.8
+                )
+                mix = (
+                    ev_active.sentiment
+                    if use_event and ev_active.sentiment
+                    else nar.sentiment
+                )
+                theme = (
+                    ev_active.theme
+                    if use_event and ev_active.theme
+                    else (
+                        rng.choice(nar.themes)
+                        if nar.themes and rng.random() < 0.4
+                        else None
+                    )
+                )
                 stance = pick_stance(rng, mix)
-                platform = rng.choices(list(nar.platforms), weights=list(nar.platforms.values()))[0]
+                platform = rng.choices(
+                    list(nar.platforms), weights=list(nar.platforms.values())
+                )[0]
                 if nar.crypto and platform == "reddit":
                     source = "CryptoCurrency"
                 elif platform == "reddit":
-                    source = rng.choices(SUBREDDITS[:4], weights=[0.45, 0.25, 0.18, 0.12])[0]
+                    source = rng.choices(
+                        SUBREDDITS[:4], weights=[0.45, 0.25, 0.18, 0.12]
+                    )[0]
                 else:
                     source = platform
                 ts = ts_hour - timedelta(minutes=rng.uniform(0, 59))
                 uid += 1
-                posts.append({
-                    "id": f"sample-{uid:06d}",
-                    "platform": platform,
-                    "source": source,
-                    "author": rng.choice(AUTHORS),
-                    "text": make_text(rng, nar, stance, theme),
-                    "timestamp": ts.isoformat(),
-                    "engagement": engagement_for(rng, platform),
-                    "url": "",
-                    "lang": "en",
-                })
+                posts.append(
+                    {
+                        "id": f"sample-{uid:06d}",
+                        "platform": platform,
+                        "source": source,
+                        "author": rng.choice(AUTHORS),
+                        "text": make_text(rng, nar, stance, theme),
+                        "timestamp": ts.isoformat(),
+                        "engagement": engagement_for(rng, platform),
+                        "url": "",
+                        "lang": "en",
+                    }
+                )
 
     # Ticker-less macro chatter (feeds topic clustering, not the leaderboard).
     for h in range(HOURS):
         ts_hour = now - timedelta(hours=h)
-        for _ in range(_poisson(rng, 0.05 * len(MACRO_NOTICKER) * scale * diurnal(ts_hour))):
+        for _ in range(
+            _poisson(rng, 0.05 * len(MACRO_NOTICKER) * scale * diurnal(ts_hour))
+        ):
             uid += 1
-            posts.append({
-                "id": f"sample-{uid:06d}",
-                "platform": rng.choice(["reddit", "bluesky"]),
-                "source": rng.choice(["investing", "stocks", "bluesky"]),
-                "author": rng.choice(AUTHORS),
-                "text": rng.choice(MACRO_NOTICKER),
-                "timestamp": (ts_hour - timedelta(minutes=rng.uniform(0, 59))).isoformat(),
-                "engagement": engagement_for(rng, "reddit"),
-                "url": "",
-                "lang": "en",
-            })
+            posts.append(
+                {
+                    "id": f"sample-{uid:06d}",
+                    "platform": rng.choice(["reddit", "bluesky"]),
+                    "source": rng.choice(["investing", "stocks", "bluesky"]),
+                    "author": rng.choice(AUTHORS),
+                    "text": rng.choice(MACRO_NOTICKER),
+                    "timestamp": (
+                        ts_hour - timedelta(minutes=rng.uniform(0, 59))
+                    ).isoformat(),
+                    "engagement": engagement_for(rng, "reddit"),
+                    "url": "",
+                    "lang": "en",
+                }
+            )
 
     posts.extend(price_echo_posts(rng, now, uid))
     posts.sort(key=lambda p: p["timestamp"])
@@ -377,7 +543,9 @@ def price_echo_posts(rng: random.Random, now: datetime, start_uid: int) -> list[
             if ts < week_ago or ts > now:
                 continue
             if prev_row["close"]:
-                rets.append((ts, (row["close"] - prev_row["close"]) / prev_row["close"]))
+                rets.append(
+                    (ts, (row["close"] - prev_row["close"]) / prev_row["close"])
+                )
         if len(rets) < 20:
             continue
         # Top ~12% absolute movers get an echo burst.
@@ -392,24 +560,38 @@ def price_echo_posts(rng: random.Random, now: datetime, start_uid: int) -> list[
                 continue
             # Bursts must stand out above the ticker's *organic* hourly chatter
             # or high-volume names drown their own signal.
-            n_posts = min(40, _poisson(rng, 5 + abs(ret) * 250 + rate_of.get(ticker, 1.0) * 4))
+            n_posts = min(
+                40, _poisson(rng, 5 + abs(ret) * 250 + rate_of.get(ticker, 1.0) * 4)
+            )
             bank = BULL if ret > 0 else BEAR
             for _ in range(n_posts):
                 uid += 1
-                posts.append({
-                    "id": f"sample-{uid:06d}",
-                    "platform": rng.choices(["stocktwits", "reddit", "bluesky"], weights=[0.5, 0.38, 0.12])[0],
-                    "source": "wallstreetbets" if rng.random() < 0.4 else "stocktwits",
-                    "author": rng.choice(AUTHORS),
-                    "text": rng.choice(bank).format(sym=f"${ticker}", name=name_of.get(ticker, ticker)),
-                    # stay strictly inside burst_ts's hour so the burst lands
-                    # in exactly one mention bucket
-                    "timestamp": (burst_ts.replace(minute=0, second=0, microsecond=0)
-                                  + timedelta(minutes=rng.uniform(1, 58))).isoformat(),
-                    "engagement": engagement_for(rng, "stocktwits") + int(abs(ret) * 400),
-                    "url": "",
-                    "lang": "en",
-                })
+                posts.append(
+                    {
+                        "id": f"sample-{uid:06d}",
+                        "platform": rng.choices(
+                            ["stocktwits", "reddit", "bluesky"],
+                            weights=[0.5, 0.38, 0.12],
+                        )[0],
+                        "source": "wallstreetbets"
+                        if rng.random() < 0.4
+                        else "stocktwits",
+                        "author": rng.choice(AUTHORS),
+                        "text": rng.choice(bank).format(
+                            sym=f"${ticker}", name=name_of.get(ticker, ticker)
+                        ),
+                        # stay strictly inside burst_ts's hour so the burst lands
+                        # in exactly one mention bucket
+                        "timestamp": (
+                            burst_ts.replace(minute=0, second=0, microsecond=0)
+                            + timedelta(minutes=rng.uniform(1, 58))
+                        ).isoformat(),
+                        "engagement": engagement_for(rng, "stocktwits")
+                        + int(abs(ret) * 400),
+                        "url": "",
+                        "lang": "en",
+                    }
+                )
     print(f"price-echo: planted {len(posts)} posts around real price moves")
     return posts
 
@@ -435,8 +617,13 @@ def main() -> None:
 
     posts = generate(args.posts, args.seed)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
-                                    "posts": posts}, indent=1), encoding="utf-8")
+    args.out.write_text(
+        json.dumps(
+            {"generated_at": datetime.now(timezone.utc).isoformat(), "posts": posts},
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(f"wrote {len(posts)} posts -> {args.out}")
 
 

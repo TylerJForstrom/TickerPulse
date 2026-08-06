@@ -3,36 +3,67 @@
 from datetime import datetime, timedelta, timezone
 
 from worker.metrics.backtest import (
-    _close_at, replay_flags, score_events, summarize,
+    _close_at,
+    replay_flags,
+    score_events,
+    summarize,
 )
 from worker.models import Post
 
 NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
 
 
-def hourly_prices(start: datetime, hours: int, base: float, jump_at: int | None = None,
-                  jump_pct: float = 0.05):
+def hourly_prices(
+    start: datetime,
+    hours: int,
+    base: float,
+    jump_at: int | None = None,
+    jump_pct: float = 0.05,
+):
     rows, price = [], base
     for i in range(hours):
         if jump_at is not None and i == jump_at:
             price *= 1 + jump_pct
-        rows.append({"ts": (start + timedelta(hours=i)).isoformat(),
-                     "open": price, "high": price, "low": price,
-                     "close": round(price, 4), "volume": 1000})
+        rows.append(
+            {
+                "ts": (start + timedelta(hours=i)).isoformat(),
+                "open": price,
+                "high": price,
+                "low": price,
+                "close": round(price, 4),
+                "volume": 1000,
+            }
+        )
     return rows
 
 
-def make_posts(ticker: str, spike_hours_ago: float, n_spike: int = 50, n_base: int = 40):
+def make_posts(
+    ticker: str, spike_hours_ago: float, n_spike: int = 50, n_base: int = 40
+):
     posts = [
-        Post(id=f"b{i}", platform="sample", text=f"${ticker}", author="a",
-             timestamp=NOW - timedelta(hours=30 + i * 3.4), tickers=[ticker],
-             sentiment="neutral", sentiment_score=0.0)
+        Post(
+            id=f"b{i}",
+            platform="sample",
+            text=f"${ticker}",
+            author="a",
+            timestamp=NOW - timedelta(hours=30 + i * 3.4),
+            tickers=[ticker],
+            sentiment="neutral",
+            sentiment_score=0.0,
+        )
         for i in range(n_base)
     ]
     posts += [
-        Post(id=f"s{i}", platform="sample", text=f"${ticker} squeeze", author="a",
-             timestamp=NOW - timedelta(hours=spike_hours_ago + (i % 10) * 0.3),
-             tickers=[ticker], sentiment="bull", sentiment_score=0.7)
+        Post(
+            id=f"s{i}",
+            platform="sample",
+            text=f"${ticker} squeeze",
+            author="a",
+            timestamp=NOW - timedelta(hours=spike_hours_ago + (i % 10) * 0.3),
+            tickers=[ticker],
+            sentiment="bull",
+            sentiment_score=0.7,
+        )
         for i in range(n_spike)
     ]
     return posts
@@ -51,7 +82,7 @@ def test_replay_dedupes_one_event_per_flareup():
 def test_close_at_respects_gap_tolerance():
     start = NOW - timedelta(hours=100)
     prices = hourly_prices(start, 50, 100.0)  # series ends 50h before NOW
-    assert _close_at(prices, NOW) is None      # gap too large
+    assert _close_at(prices, NOW) is None  # gap too large
     assert _close_at(prices, start + timedelta(hours=10)) == 100.0
 
 

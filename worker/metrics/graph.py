@@ -31,7 +31,9 @@ def compute_graph(posts: list[Post], min_mentions: int = 5, min_edge: int = 2) -
             "sector": ticker_sector(t),
             "mentions": mentions[t],
         }
-        for t in sorted(keep & connected | {t for t in keep if mentions[t] >= min_mentions * 4})
+        for t in sorted(
+            keep & connected | {t for t in keep if mentions[t] >= min_mentions * 4}
+        )
     ]
     node_ids = {n["id"] for n in nodes}
     return {

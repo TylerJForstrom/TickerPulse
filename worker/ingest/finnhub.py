@@ -27,9 +27,14 @@ class FinnhubAdapter(Adapter):
     def fetch(self) -> Iterable[Post]:
         for category in CATEGORIES:
             try:
-                resp = requests.get(API, params={
-                    "category": category, "token": settings.finnhub_api_key,
-                }, timeout=30)
+                resp = requests.get(
+                    API,
+                    params={
+                        "category": category,
+                        "token": settings.finnhub_api_key,
+                    },
+                    timeout=30,
+                )
                 if resp.status_code != 200:
                     print(f"  finnhub {category}: HTTP {resp.status_code}")
                     continue

@@ -20,10 +20,10 @@ from worker.models import Post
 TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
 API = "https://oauth.reddit.com"
 
-PAGE_LIMIT = 100     # API max per listing page
-MAX_NEW_PAGES = 8    # 800 posts of /new depth per subreddit; worst case
-                     # 5 subs x (8 new + 1 hot) + token = 46 requests/run,
-                     # well inside the OAuth client-credentials quota
+PAGE_LIMIT = 100  # API max per listing page
+MAX_NEW_PAGES = 8  # 800 posts of /new depth per subreddit; worst case
+# 5 subs x (8 new + 1 hot) + token = 46 requests/run,
+# well inside the OAuth client-credentials quota
 
 
 class RedditAdapter(Adapter):
@@ -66,7 +66,10 @@ class RedditAdapter(Adapter):
             if after:
                 params["after"] = after
             resp = requests.get(
-                f"{API}/r/{sub}/new", params=params, headers=headers, timeout=30,
+                f"{API}/r/{sub}/new",
+                params=params,
+                headers=headers,
+                timeout=30,
             )
             if resp.status_code != 200:
                 print(f"  reddit r/{sub}/new: HTTP {resp.status_code}")

@@ -4,8 +4,12 @@ from datetime import datetime, timedelta, timezone
 
 from worker.metrics.correlation import lead_lag
 from worker.metrics.trends import (
-    breakout_score, bull_bear_ratio, classify_phase, compute_ticker_trends,
-    market_mood, velocity,
+    breakout_score,
+    bull_bear_ratio,
+    classify_phase,
+    compute_ticker_trends,
+    market_mood,
+    velocity,
 )
 from worker.models import Post
 
@@ -14,14 +18,20 @@ NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
 
 def make_post(i, hours_ago, ticker="NVDA", sentiment="bull", score=0.6, engagement=10):
     return Post(
-        id=f"t:{i}", platform="sample", text=f"${ticker} test", author="a",
-        timestamp=NOW - timedelta(hours=hours_ago), engagement=engagement,
-        tickers=[ticker], sentiment=sentiment, sentiment_score=score,
+        id=f"t:{i}",
+        platform="sample",
+        text=f"${ticker} test",
+        author="a",
+        timestamp=NOW - timedelta(hours=hours_ago),
+        engagement=engagement,
+        tickers=[ticker],
+        sentiment=sentiment,
+        sentiment_score=score,
     )
 
 
 def test_velocity_sign_and_scale():
-    assert velocity(48, 24, 24) == 1.0       # +1 mention/hour
+    assert velocity(48, 24, 24) == 1.0  # +1 mention/hour
     assert velocity(12, 36, 24) == -1.0
     assert velocity(10, 10, 24) == 0.0
 
@@ -41,7 +51,10 @@ def test_breakout_empty_baseline():
 
 
 def test_phase_classification():
-    assert classify_phase(breakout=2.0, vel=0.5, prev_rate=0.1, baseline_mean=1.0) == "emerging"
+    assert (
+        classify_phase(breakout=2.0, vel=0.5, prev_rate=0.1, baseline_mean=1.0)
+        == "emerging"
+    )
     assert classify_phase(2.0, -0.5, 3.0, 1.0) == "peaking"
     assert classify_phase(0.5, -0.5, 3.0, 1.0) == "fading"
     assert classify_phase(0.2, 0.0, 1.0, 1.0) == "steady"
@@ -49,7 +62,7 @@ def test_phase_classification():
 
 def test_bull_bear_ratio_smoothing():
     assert bull_bear_ratio(0, 0) == 1.0
-    assert bull_bear_ratio(9, 0) == 10.0       # no division blow-ups
+    assert bull_bear_ratio(9, 0) == 10.0  # no division blow-ups
     assert bull_bear_ratio(3, 7) == 0.5
 
 

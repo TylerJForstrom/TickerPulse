@@ -11,17 +11,17 @@ from typing import Any
 
 @dataclass
 class Post:
-    id: str                      # "<platform>:<native id>" — globally unique
-    platform: str                # reddit | stocktwits | bluesky | hackernews | rss | sample
+    id: str  # "<platform>:<native id>" — globally unique
+    platform: str  # reddit | stocktwits | bluesky | hackernews | rss | sample
     text: str
     author: str
-    timestamp: datetime          # always tz-aware UTC
-    engagement: int = 0          # upvotes + likes + reposts, platform-weighted
+    timestamp: datetime  # always tz-aware UTC
+    engagement: int = 0  # upvotes + likes + reposts, platform-weighted
     tickers: list[str] = field(default_factory=list)
     lang: str = "en"
     url: str = ""
-    source: str = ""             # subreddit / feed name / venue detail
-    sentiment: str | None = None         # bull | bear | neutral
+    source: str = ""  # subreddit / feed name / venue detail
+    sentiment: str | None = None  # bull | bear | neutral
     sentiment_score: float | None = None  # -1 .. +1
     topic_id: int | None = None
 

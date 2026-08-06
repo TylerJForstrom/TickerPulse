@@ -25,7 +25,9 @@ EPS = 1e-9
 SPIKE_HOURS = 6  # recency window for breakout detection
 
 
-def hourly_counts(posts: list[Post], ticker: str, now: datetime, hours: int) -> list[int]:
+def hourly_counts(
+    posts: list[Post], ticker: str, now: datetime, hours: int
+) -> list[int]:
     """Mentions per hour for the trailing `hours`, oldest first."""
     counts = [0] * hours
     start = now - timedelta(hours=hours)
@@ -53,7 +55,9 @@ def breakout_score(current_rate: float, baseline_rates: list[float]) -> float:
     return max(-10.0, min(10.0, z))
 
 
-def classify_phase(breakout: float, vel: float, prev_rate: float, baseline_mean: float) -> str:
+def classify_phase(
+    breakout: float, vel: float, prev_rate: float, baseline_mean: float
+) -> str:
     hot = breakout >= 1.5
     was_hot = prev_rate > baseline_mean * 1.5 + EPS
     if hot and vel > 0:
@@ -111,7 +115,8 @@ def compute_ticker_trends(
         hist_start = now - timedelta(hours=history_hours)
         recent_hods = {(now - timedelta(hours=k + 1)).hour for k in range(SPIKE_HOURS)}
         matched = [
-            float(c) for i, c in enumerate(counts[: history_hours - window_hours])
+            float(c)
+            for i, c in enumerate(counts[: history_hours - window_hours])
             if (hist_start + timedelta(hours=i)).hour in recent_hods
         ]
 
@@ -120,7 +125,11 @@ def compute_ticker_trends(
         phase = classify_phase(brk, vel, prev_rate, baseline_mean)
 
         sentiments = Counter(p.sentiment for p in window if p.sentiment)
-        bull, bear, neutral = sentiments["bull"], sentiments["bear"], sentiments["neutral"]
+        bull, bear, neutral = (
+            sentiments["bull"],
+            sentiments["bear"],
+            sentiments["neutral"],
+        )
         # Influence-weighted: platform reach × engagement, so a syndicated
         # headline or viral thread moves the needle more than a drive-by post.
         sent_avg = weighted_sentiment(window) or 0.0
@@ -154,10 +163,15 @@ def compute_ticker_trends(
             "origin_platform": origin,
             "top_posts": [
                 {
-                    "id": p.id, "text": p.text, "author": p.author,
-                    "platform": p.platform, "source": p.source,
-                    "engagement": p.engagement, "url": p.url,
-                    "sentiment": p.sentiment, "timestamp": p.timestamp.isoformat(),
+                    "id": p.id,
+                    "text": p.text,
+                    "author": p.author,
+                    "platform": p.platform,
+                    "source": p.source,
+                    "engagement": p.engagement,
+                    "url": p.url,
+                    "sentiment": p.sentiment,
+                    "timestamp": p.timestamp.isoformat(),
                 }
                 for p in top_posts
             ],
@@ -181,9 +195,13 @@ def bucket_series(
     buckets = [
         {
             "bucket_start": (start + timedelta(minutes=i * bucket_minutes)).isoformat(),
-            "mentions": 0, "engagement": 0,
-            "bull": 0, "bear": 0, "neutral": 0,
-            "sentiment_sum": 0.0, "scored": 0,
+            "mentions": 0,
+            "engagement": 0,
+            "bull": 0,
+            "bear": 0,
+            "neutral": 0,
+            "sentiment_sum": 0.0,
+            "scored": 0,
             "platforms": Counter(),
         }
         for i in range(n_buckets)
@@ -191,7 +209,10 @@ def bucket_series(
     for p in posts:
         if ticker not in p.tickers or p.timestamp < start:
             continue
-        idx = min(n_buckets - 1, int((p.timestamp - start).total_seconds() // (bucket_minutes * 60)))
+        idx = min(
+            n_buckets - 1,
+            int((p.timestamp - start).total_seconds() // (bucket_minutes * 60)),
+        )
         b = buckets[idx]
         b["mentions"] += 1
         b["engagement"] += p.engagement
@@ -204,30 +225,56 @@ def bucket_series(
 
     out = []
     for b in buckets:
-        out.append({
-            "bucket_start": b["bucket_start"],
-            "mentions": b["mentions"],
-            "engagement": b["engagement"],
-            "bull": b["bull"], "bear": b["bear"], "neutral": b["neutral"],
-            "sentiment_avg": round(b["sentiment_sum"] / b["scored"], 4) if b["scored"] else None,
-            "platforms": dict(b["platforms"]),
-        })
+        out.append(
+            {
+                "bucket_start": b["bucket_start"],
+                "mentions": b["mentions"],
+                "engagement": b["engagement"],
+                "bull": b["bull"],
+                "bear": b["bear"],
+                "neutral": b["neutral"],
+                "sentiment_avg": round(b["sentiment_sum"] / b["scored"], 4)
+                if b["scored"]
+                else None,
+                "platforms": dict(b["platforms"]),
+            }
+        )
     return out
 
 
-def market_mood(posts: list[Post], window_hours: int = 24, now: datetime | None = None) -> dict:
+def market_mood(
+    posts: list[Post], window_hours: int = 24, now: datetime | None = None
+) -> dict:
     """Influence-weighted bull/bear index across all chatter, 0–100.
     Weights = platform reach × engagement (see metrics/weights.py)."""
     now = now or datetime.now(timezone.utc)
     win_start = now - timedelta(hours=window_hours)
-    window = [p for p in posts if p.timestamp >= win_start and p.sentiment_score is not None]
+    window = [
+        p for p in posts if p.timestamp >= win_start and p.sentiment_score is not None
+    ]
     if not window:
-        return {"index": 50.0, "label": "neutral", "bull": 0, "bear": 0, "neutral": 0, "posts": 0}
+        return {
+            "index": 50.0,
+            "label": "neutral",
+            "bull": 0,
+            "bear": 0,
+            "neutral": 0,
+            "posts": 0,
+        }
     wsum = sum(post_weight(p) for p in window)
     weighted = sum(post_weight(p) * p.sentiment_score for p in window) / wsum
     index = round((weighted + 1) / 2 * 100, 1)
-    label = ("extreme greed" if index >= 75 else "greed" if index >= 60 else
-             "neutral" if index > 40 else "fear" if index > 25 else "extreme fear")
+    label = (
+        "extreme greed"
+        if index >= 75
+        else "greed"
+        if index >= 60
+        else "neutral"
+        if index > 40
+        else "fear"
+        if index > 25
+        else "extreme fear"
+    )
     sentiments = Counter(p.sentiment for p in window)
     return {
         "index": index,

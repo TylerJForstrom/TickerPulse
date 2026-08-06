@@ -40,7 +40,9 @@ def _pick(row: dict, field: str):
 
 
 def _parse_ts(value) -> datetime:
-    if isinstance(value, (int, float)) or (isinstance(value, str) and value.replace(".", "", 1).isdigit()):
+    if isinstance(value, (int, float)) or (
+        isinstance(value, str) and value.replace(".", "", 1).isdigit()
+    ):
         return datetime.fromtimestamp(float(value), tz=timezone.utc)
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
@@ -51,12 +53,14 @@ def row_to_post(row: dict, default_platform: str = "sample") -> Post | None:
     if not text or ts is None:
         return None
     platform = _pick(row, "platform") or default_platform
-    native_id = _pick(row, "id") or hashlib.sha1(
-        f"{text}{ts}".encode()
-    ).hexdigest()[:16]
+    native_id = (
+        _pick(row, "id") or hashlib.sha1(f"{text}{ts}".encode()).hexdigest()[:16]
+    )
     tickers = _pick(row, "tickers") or []
     if isinstance(tickers, str):
-        tickers = [t.strip().upper().lstrip("$") for t in tickers.split(",") if t.strip()]
+        tickers = [
+            t.strip().upper().lstrip("$") for t in tickers.split(",") if t.strip()
+        ]
     try:
         engagement = int(float(_pick(row, "engagement") or 0))
     except (TypeError, ValueError):

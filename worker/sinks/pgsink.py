@@ -32,9 +32,21 @@ def upsert_posts(conn, posts: list[Post]) -> int:
     if not posts:
         return 0
     rows = [
-        (p.id, p.platform, p.source, p.author, p.text, p.url, p.lang,
-         p.engagement, p.sentiment, p.sentiment_score, p.tickers,
-         p.topic_id, p.timestamp)
+        (
+            p.id,
+            p.platform,
+            p.source,
+            p.author,
+            p.text,
+            p.url,
+            p.lang,
+            p.engagement,
+            p.sentiment,
+            p.sentiment_score,
+            p.tickers,
+            p.topic_id,
+            p.timestamp,
+        )
         for p in posts
     ]
     with conn.cursor() as cur:
@@ -68,12 +80,23 @@ def load_recent_posts(conn, hours: int = 168) -> list[Post]:
         )
         out = []
         for r in cur.fetchall():
-            out.append(Post(
-                id=r[0], platform=r[1], source=r[2] or "", author=r[3] or "",
-                text=r[4], url=r[5] or "", lang=r[6] or "en", engagement=r[7] or 0,
-                sentiment=r[8], sentiment_score=r[9], tickers=list(r[10] or []),
-                topic_id=r[11], timestamp=r[12],
-            ))
+            out.append(
+                Post(
+                    id=r[0],
+                    platform=r[1],
+                    source=r[2] or "",
+                    author=r[3] or "",
+                    text=r[4],
+                    url=r[5] or "",
+                    lang=r[6] or "en",
+                    engagement=r[7] or 0,
+                    sentiment=r[8],
+                    sentiment_score=r[9],
+                    tickers=list(r[10] or []),
+                    topic_id=r[11],
+                    timestamp=r[12],
+                )
+            )
         return out
 
 
@@ -117,9 +140,16 @@ def upsert_buckets(conn, ticker: str, bucket_minutes: int, rows: list[dict]) -> 
                  platforms = excluded.platforms""",
             [
                 (
-                    ticker, r["bucket_start"], bucket_minutes, r["mentions"],
-                    r["engagement"], r["bull"], r["bear"], r["neutral"],
-                    r["sentiment_avg"], json.dumps(r["platforms"]),
+                    ticker,
+                    r["bucket_start"],
+                    bucket_minutes,
+                    r["mentions"],
+                    r["engagement"],
+                    r["bull"],
+                    r["bear"],
+                    r["neutral"],
+                    r["sentiment_avg"],
+                    json.dumps(r["platforms"]),
                 )
                 for r in live
             ],
@@ -133,10 +163,15 @@ def prune(conn, days: int = 30) -> dict[str, int]:
     never fills. Snapshot tables are replaced every run and need no pruning."""
     counts: dict[str, int] = {}
     with conn.cursor() as cur:
-        for table, col in (("posts", "created_at"), ("alerts", "created_at"),
-                           ("prices", "ts"), ("ticker_buckets", "bucket_start")):
+        for table, col in (
+            ("posts", "created_at"),
+            ("alerts", "created_at"),
+            ("prices", "ts"),
+            ("ticker_buckets", "bucket_start"),
+        ):
             cur.execute(
-                f"delete from {table} where {col} < now() - interval '%s days'" % int(days)
+                f"delete from {table} where {col} < now() - interval '%s days'"
+                % int(days)
             )
             counts[table] = cur.rowcount
     conn.commit()

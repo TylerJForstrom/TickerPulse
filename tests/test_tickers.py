@@ -66,7 +66,13 @@ def test_brk_dot_b_cashtag():
 
 
 def test_tag_posts_merges_pretagged():
-    p = Post(id="x:1", platform="stocktwits", text="earnings beat across the board",
-             author="a", timestamp=datetime.now(timezone.utc), tickers=["TSLA"])
+    p = Post(
+        id="x:1",
+        platform="stocktwits",
+        text="earnings beat across the board",
+        author="a",
+        timestamp=datetime.now(timezone.utc),
+        tickers=["TSLA"],
+    )
     tag_posts([p])
     assert p.tickers == ["TSLA"]  # pre-tagged survives, nothing bogus added

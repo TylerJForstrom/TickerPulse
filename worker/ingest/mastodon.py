@@ -22,8 +22,8 @@ TAGS = ["stocks", "stockmarket", "investing", "bitcoin", "crypto"]
 HEADERS = {"User-Agent": "TickerPulse/1.0 (research project)"}
 TAG_RE = re.compile(r"<[^>]+>")
 
-PAGE_LIMIT = 40   # API max for public timelines
-MAX_PAGES = 5     # 200 statuses of depth per tag; 5 tags = ≤25 requests
+PAGE_LIMIT = 40  # API max for public timelines
+MAX_PAGES = 5  # 200 statuses of depth per tag; 5 tags = ≤25 requests
 
 
 def _strip_html(html: str) -> str:
@@ -48,7 +48,9 @@ class MastodonAdapter(Adapter):
                 params["max_id"] = max_id
             resp = requests.get(
                 f"{INSTANCE}/api/v1/timelines/tag/{tag}",
-                params=params, headers=HEADERS, timeout=30,
+                params=params,
+                headers=HEADERS,
+                timeout=30,
             )
             if resp.status_code != 200:
                 print(f"  mastodon #{tag}: HTTP {resp.status_code}")

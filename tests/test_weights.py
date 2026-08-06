@@ -9,9 +9,15 @@ NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
 
 
 def make(platform, engagement, score):
-    return Post(id=f"{platform}:{engagement}:{score}", platform=platform, text="x",
-                author="a", timestamp=NOW, engagement=engagement,
-                sentiment_score=score)
+    return Post(
+        id=f"{platform}:{engagement}:{score}",
+        platform=platform,
+        text="x",
+        author="a",
+        timestamp=NOW,
+        engagement=engagement,
+        sentiment_score=score,
+    )
 
 
 def test_newsroom_headline_outweighs_quiet_micropost():
@@ -29,8 +35,8 @@ def test_engagement_grows_weight_sublinearly():
 
 def test_weighted_sentiment_leans_toward_influence():
     posts = [
-        make("rss", 50, 0.8),        # heavyweight bullish headline
-        make("bluesky", 0, -0.8),    # featherweight bearish post
+        make("rss", 50, 0.8),  # heavyweight bullish headline
+        make("bluesky", 0, -0.8),  # featherweight bearish post
     ]
     s = weighted_sentiment(posts)
     assert s > 0.4  # far closer to the headline than the midpoint

@@ -14,8 +14,13 @@ def _arrow(curr: int, prev: int) -> str:
     return f"{'▲' if pct >= 0 else '▼'} {abs(pct):.0f}%"
 
 
-def generate_brief(trends: dict[str, dict], mood: dict, topics: list[dict],
-                   alerts: list[dict], mode: str) -> str:
+def generate_brief(
+    trends: dict[str, dict],
+    mood: dict,
+    topics: list[dict],
+    alerts: list[dict],
+    mode: str,
+) -> str:
     now = datetime.now(timezone.utc)
     ranked = sorted(trends.values(), key=lambda m: -m["breakout_score"])
     emerging = [m for m in ranked if m["phase"] == "emerging"][:5]
@@ -52,8 +57,13 @@ def generate_brief(trends: dict[str, dict], mood: dict, topics: list[dict],
                 f"sentiment {m['sentiment_avg']:+.2f}."
             )
 
-    lines += ["", "## Most discussed", "", "| Ticker | Mentions | Δ | Bull:Bear | Sentiment | Phase |",
-              "|---|---|---|---|---|---|"]
+    lines += [
+        "",
+        "## Most discussed",
+        "",
+        "| Ticker | Mentions | Δ | Bull:Bear | Sentiment | Phase |",
+        "|---|---|---|---|---|---|",
+    ]
     for m in by_vol:
         lines.append(
             f"| ${m['ticker']} | {m['mentions']} | {_arrow(m['mentions'], m['mentions_prev'])} "
@@ -64,9 +74,11 @@ def generate_brief(trends: dict[str, dict], mood: dict, topics: list[dict],
         lines += ["", "## Themes in the conversation"]
         for t in sorted(topics, key=lambda t: -t["size"])[:6]:
             ticks = ", ".join(f"${x['ticker']}" for x in t["tickers"][:3])
-            lines.append(f"- **{t['label']}** — {t['size']} posts"
-                         + (f" (mostly {ticks})" if ticks else "")
-                         + f", sentiment {t['sentiment_avg']:+.2f}.")
+            lines.append(
+                f"- **{t['label']}** — {t['size']} posts"
+                + (f" (mostly {ticks})" if ticks else "")
+                + f", sentiment {t['sentiment_avg']:+.2f}."
+            )
 
     if alerts:
         lines += ["", "## Unusual activity"]
@@ -75,17 +87,22 @@ def generate_brief(trends: dict[str, dict], mood: dict, topics: list[dict],
 
     # Supporting quotes: highest-engagement posts among emerging tickers.
     quotes = []
-    for m in (emerging or by_vol[:3]):
+    for m in emerging or by_vol[:3]:
         if m["top_posts"]:
             p = m["top_posts"][0]
             quotes.append((m["ticker"], p))
     if quotes:
         lines += ["", "## Voices from the crowd"]
         for ticker, p in quotes[:5]:
-            lines.append(f"> \"{p['text']}\" — *{p['author']} on {p['platform']}, "
-                         f"${ticker}, {p['engagement']} engagement*")
+            lines.append(
+                f'> "{p["text"]}" — *{p["author"]} on {p["platform"]}, '
+                f"${ticker}, {p['engagement']} engagement*"
+            )
             lines.append("")
 
-    lines += ["", "---",
-              "*TickerPulse aggregates public social chatter. Nothing here is financial advice.*"]
+    lines += [
+        "",
+        "---",
+        "*TickerPulse aggregates public social chatter. Nothing here is financial advice.*",
+    ]
     return "\n".join(lines)

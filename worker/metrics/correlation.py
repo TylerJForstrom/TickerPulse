@@ -39,7 +39,10 @@ def align_series(buckets: list[dict], prices: list[dict]) -> list[dict]:
     hours where we simply have no social data yet would dilute r toward 0."""
     mentions = {_hour_key(b["bucket_start"]): b for b in buckets}
     if buckets:
-        lo, hi = _hour_key(buckets[0]["bucket_start"]), _hour_key(buckets[-1]["bucket_start"])
+        lo, hi = (
+            _hour_key(buckets[0]["bucket_start"]),
+            _hour_key(buckets[-1]["bucket_start"]),
+        )
         prices = [c for c in prices if lo <= _hour_key(c["ts"]) <= hi]
     rows = []
     for candle in prices:
@@ -47,15 +50,17 @@ def align_series(buckets: list[dict], prices: list[dict]) -> list[dict]:
         b = mentions.get(key)
         prev_close = rows[-1]["close"] if rows else candle["open"]
         ret = (candle["close"] - prev_close) / prev_close if prev_close else 0.0
-        rows.append({
-            "ts": candle["ts"],
-            "close": candle["close"],
-            "volume": candle["volume"],
-            "return": round(ret, 6),
-            "abs_return": round(abs(ret), 6),
-            "mentions": b["mentions"] if b else 0,
-            "sentiment_avg": (b or {}).get("sentiment_avg"),
-        })
+        rows.append(
+            {
+                "ts": candle["ts"],
+                "close": candle["close"],
+                "volume": candle["volume"],
+                "return": round(ret, 6),
+                "abs_return": round(abs(ret), 6),
+                "mentions": b["mentions"] if b else 0,
+                "sentiment_avg": (b or {}).get("sentiment_avg"),
+            }
+        )
     return rows
 
 
@@ -91,13 +96,19 @@ def readout(ticker: str, ll: dict) -> str:
     r, lag, lag_r = ll["pearson_r"], ll["best_lag_hours"], ll["best_lag_r"]
     if abs(lag_r) < 0.15:
         return f"No meaningful buzz-move relationship for {ticker} in this window."
-    strength = "strong" if abs(lag_r) >= 0.5 else "moderate" if abs(lag_r) >= 0.3 else "weak"
+    strength = (
+        "strong" if abs(lag_r) >= 0.5 else "moderate" if abs(lag_r) >= 0.3 else "weak"
+    )
     if lag > 0:
-        return (f"Chatter tends to LEAD price moves by ~{lag}h "
-                f"({strength}, r={lag_r:.2f}) — social buzz has been an early signal for {ticker}.")
+        return (
+            f"Chatter tends to LEAD price moves by ~{lag}h "
+            f"({strength}, r={lag_r:.2f}) — social buzz has been an early signal for {ticker}."
+        )
     if lag < 0:
-        return (f"Chatter tends to FOLLOW price moves by ~{-lag}h "
-                f"({strength}, r={lag_r:.2f}) — the crowd is reacting to {ticker}'s tape, not predicting it.")
+        return (
+            f"Chatter tends to FOLLOW price moves by ~{-lag}h "
+            f"({strength}, r={lag_r:.2f}) — the crowd is reacting to {ticker}'s tape, not predicting it."
+        )
     return f"Buzz and price moves are concurrent for {ticker} ({strength}, r={r:.2f})."
 
 
@@ -108,6 +119,6 @@ def compute_correlation(ticker: str, buckets: list[dict], prices: list[dict]) ->
         "ticker": ticker,
         **ll,
         "readout": readout(ticker, ll),
-        "series": rows[-7 * 24:],  # trailing week for the overlay chart
+        "series": rows[-7 * 24 :],  # trailing week for the overlay chart
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }

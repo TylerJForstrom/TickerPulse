@@ -69,9 +69,17 @@ def collect_posts(demo: bool) -> tuple[list[Post], list[str]]:
         from worker.ingest.mastodon import MastodonAdapter
         from worker.ingest.finnhub import FinnhubAdapter
 
-        adapters += [RedditAdapter(), StockTwitsAdapter(), BlueskyAdapter(),
-                     HackerNewsAdapter(), RSSAdapter(), EdgarAdapter(),
-                     GdeltAdapter(), MastodonAdapter(), FinnhubAdapter()]
+        adapters += [
+            RedditAdapter(),
+            StockTwitsAdapter(),
+            BlueskyAdapter(),
+            HackerNewsAdapter(),
+            RSSAdapter(),
+            EdgarAdapter(),
+            GdeltAdapter(),
+            MastodonAdapter(),
+            FinnhubAdapter(),
+        ]
 
     posts: list[Post] = []
     used: list[str] = []
@@ -91,7 +99,9 @@ def collect_posts(demo: bool) -> tuple[list[Post], list[str]]:
     return dedupe(posts), used
 
 
-def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=None) -> None:
+def run(
+    demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=None
+) -> None:
     t_start = time.time()
     live = settings.has_db and not demo
     mode = "live" if live else "demo"
@@ -100,7 +110,9 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
     print("[1/6] ingest")
     new_posts, sources = collect_posts(demo=not live)
     if not new_posts and not live:
-        print("No posts ingested — generate the sample set first: python -m worker.sample_gen")
+        print(
+            "No posts ingested — generate the sample set first: python -m worker.sample_gen"
+        )
         sys.exit(1)
 
     print("[2/6] nlp: ticker extraction")
@@ -130,15 +142,19 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
     n_raw = len(posts)
     posts = collapse_near_duplicates(posts)
     if len(posts) != n_raw:
-        print(f"  copypasta collapse: {n_raw - len(posts)} duplicate long posts folded into origins")
+        print(
+            f"  copypasta collapse: {n_raw - len(posts)} duplicate long posts folded into origins"
+        )
     trends = compute_ticker_trends(posts, window_hours=settings.window_hours)
     mood = market_mood(posts, window_hours=settings.window_hours)
     graph = compute_graph(posts)
     alerts = detect_alerts(trends)
     ranked = sorted(trends.values(), key=lambda m: -m["mentions"])[:top_n]
     top_tickers = [m["ticker"] for m in ranked]
-    print(f"  {len(trends)} tickers above floor; mood {mood['index']} ({mood['label']}); "
-          f"{len(alerts)} alerts")
+    print(
+        f"  {len(trends)} tickers above floor; mood {mood['index']} ({mood['label']}); "
+        f"{len(alerts)} alerts"
+    )
 
     print("[5/6] market data + correlation + flag backtest")
     from worker.metrics.backtest import replay_flags, score_events, summarize, HORIZONS
@@ -161,9 +177,16 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         return optional_stage(
             f"correlation:{t}",
             lambda: compute_correlation(t, buckets[t], prices[t]),
-            {"ticker": t, "pearson_r": 0.0, "best_lag_hours": 0, "best_lag_r": 0.0,
-             "by_lag": {}, "readout": "Correlation unavailable for this window.",
-             "series": [], "updated_at": datetime.now(timezone.utc).isoformat()},
+            {
+                "ticker": t,
+                "pearson_r": 0.0,
+                "best_lag_hours": 0,
+                "best_lag_r": 0.0,
+                "by_lag": {},
+                "readout": "Correlation unavailable for this window.",
+                "series": [],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
         )
 
     correlations = {t: _safe_correlation(t) for t in top_tickers}
@@ -174,15 +197,23 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         return {
             "summary": summarize(flag_events),
             "events": flag_events[:60],
-            "params": {"window_hours": settings.window_hours,
-                       "breakout_floor": 1.5, "horizons": list(HORIZONS)},
+            "params": {
+                "window_hours": settings.window_hours,
+                "breakout_floor": 1.5,
+                "horizons": list(HORIZONS),
+            },
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
     backtest_payload = optional_stage(
-        "backtest:score", _scored_backtest,
-        {"summary": None, "events": [], "params": {},
-         "updated_at": datetime.now(timezone.utc).isoformat()},
+        "backtest:score",
+        _scored_backtest,
+        {
+            "summary": None,
+            "events": [],
+            "params": {},
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
     )
     print(f"  {len(flag_events)} historical flags replayed")
 
@@ -192,11 +223,14 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         from worker.nlp.topics import compute_topics
 
         topics_payload = optional_stage(
-            "topics", lambda: compute_topics(posts),
+            "topics",
+            lambda: compute_topics(posts),
             {"topics": [], "points": [], "backend": "failed"},
         )
-        print(f"  {len(topics_payload['topics'])} topics over "
-              f"{len(topics_payload['points'])} posts ({topics_payload['backend']})")
+        print(
+            f"  {len(topics_payload['topics'])} topics over "
+            f"{len(topics_payload['points'])} posts ({topics_payload['backend']})"
+        )
 
     updated_at = datetime.now(timezone.utc).isoformat()
     brief_md = generate_brief(trends, mood, topics_payload["topics"], alerts, mode)
@@ -224,23 +258,48 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
 
         db_trends = []
         for m in trends.values():
-            db_trends.append({k: v for k, v in m.items() if k not in ("sector", "origin_platform")})
-        pgsink.replace_table(conn, "ticker_trends",
-                             db_trends, {"platforms", "top_posts", "sparkline"})
-        pgsink.replace_table(conn, "topics", [
-            {k: t[k] for k in ("id", "label", "terms", "size", "sentiment_avg")}
-            | {"tickers": t["tickers"]} for t in topics_payload["topics"]
-        ], {"terms", "tickers"})
-        pgsink.replace_table(conn, "correlations", [
-            {"ticker": c["ticker"], "pearson_r": c["pearson_r"],
-             "best_lag_hours": c["best_lag_hours"], "best_lag_r": c["best_lag_r"],
-             "readout": c["readout"], "series": c["series"]}
-            for c in correlations.values()
-        ], {"series"})
-        pgsink.replace_table(conn, "alerts", [
-            {k: a[k] for k in ("ticker", "kind", "message", "score", "created_at")}
-            for a in alerts
-        ], set())
+            db_trends.append(
+                {k: v for k, v in m.items() if k not in ("sector", "origin_platform")}
+            )
+        pgsink.replace_table(
+            conn, "ticker_trends", db_trends, {"platforms", "top_posts", "sparkline"}
+        )
+        pgsink.replace_table(
+            conn,
+            "topics",
+            [
+                {k: t[k] for k in ("id", "label", "terms", "size", "sentiment_avg")}
+                | {"tickers": t["tickers"]}
+                for t in topics_payload["topics"]
+            ],
+            {"terms", "tickers"},
+        )
+        pgsink.replace_table(
+            conn,
+            "correlations",
+            [
+                {
+                    "ticker": c["ticker"],
+                    "pearson_r": c["pearson_r"],
+                    "best_lag_hours": c["best_lag_hours"],
+                    "best_lag_r": c["best_lag_r"],
+                    "readout": c["readout"],
+                    "series": c["series"],
+                }
+                for c in correlations.values()
+            ],
+            {"series"},
+        )
+        pgsink.replace_table(
+            conn,
+            "alerts",
+            [
+                {k: a[k] for k in ("ticker", "kind", "message", "score", "created_at")}
+                for a in alerts
+            ],
+            set(),
+        )
+
         # Notify on fresh alerts before overwriting the previous snapshot.
         def _notify():
             from worker.notify import send_discord_alerts
@@ -266,8 +325,12 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
                 aligned = bucket_series(
                     posts, t, settings.bucket_minutes, now=aligned_now
                 )
-                total += pgsink.upsert_buckets(conn, t, settings.bucket_minutes, aligned)
-            print(f"  buckets persisted: {total} rows across {len(top_tickers)} tickers")
+                total += pgsink.upsert_buckets(
+                    conn, t, settings.bucket_minutes, aligned
+                )
+            print(
+                f"  buckets persisted: {total} rows across {len(top_tickers)} tickers"
+            )
 
         optional_stage("persist-buckets", _persist_buckets, None)
         conn.rollback()
@@ -301,10 +364,16 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
         pgsink.upsert_meta(conn, "topics_map", topics_payload)
         pgsink.upsert_meta(conn, "brief", {"markdown": brief_md})
         for t in top_tickers:
-            pgsink.upsert_meta(conn, f"ticker:{t}", {
-                "trend": trends[t], "buckets": buckets[t][-168:],
-                "prices": prices[t], "correlation": correlations[t],
-            })
+            pgsink.upsert_meta(
+                conn,
+                f"ticker:{t}",
+                {
+                    "trend": trends[t],
+                    "buckets": buckets[t][-168:],
+                    "prices": prices[t],
+                    "correlation": correlations[t],
+                },
+            )
         conn.close()
         print(f"done (live) in {time.time() - t_start:.1f}s")
     else:
@@ -332,9 +401,13 @@ def run(demo: bool, skip_topics: bool, skip_prices: bool, top_n: int, out_dir=No
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--demo", action="store_true", help="force demo mode even with a DB configured")
+    ap.add_argument(
+        "--demo", action="store_true", help="force demo mode even with a DB configured"
+    )
     ap.add_argument("--skip-topics", action="store_true")
-    ap.add_argument("--skip-prices", action="store_true", help="synthetic prices (offline)")
+    ap.add_argument(
+        "--skip-prices", action="store_true", help="synthetic prices (offline)"
+    )
     ap.add_argument("--top-n", type=int, default=40)
     args = ap.parse_args()
     run(args.demo, args.skip_topics, args.skip_prices, args.top_n)

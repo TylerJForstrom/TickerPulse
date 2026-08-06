@@ -26,7 +26,8 @@ class HackerNewsAdapter(Adapter):
         for q in QUERIES:
             try:
                 resp = requests.get(
-                    API, params={"query": q, "tags": "story", "hitsPerPage": 30},
+                    API,
+                    params={"query": q, "tags": "story", "hitsPerPage": 30},
                     timeout=30,
                 )
                 if resp.status_code != 200:
@@ -42,9 +43,13 @@ class HackerNewsAdapter(Adapter):
                         source="hackernews",
                         author=hit.get("author", "unknown"),
                         text=hit["title"],
-                        timestamp=datetime.fromtimestamp(hit["created_at_i"], tz=timezone.utc),
-                        engagement=int(hit.get("points") or 0) + int(hit.get("num_comments") or 0),
-                        url=hit.get("url") or f"https://news.ycombinator.com/item?id={oid}",
+                        timestamp=datetime.fromtimestamp(
+                            hit["created_at_i"], tz=timezone.utc
+                        ),
+                        engagement=int(hit.get("points") or 0)
+                        + int(hit.get("num_comments") or 0),
+                        url=hit.get("url")
+                        or f"https://news.ycombinator.com/item?id={oid}",
                     )
             except Exception as exc:
                 print(f"  hackernews '{q}' failed: {exc}")
