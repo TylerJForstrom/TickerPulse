@@ -12,3 +12,15 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  # npm added 2026-08-06. Root cause of a 10-alert backlog: only pip and
+  # github-actions were configured, so dashboard/package-lock.json was never
+  # watched and the Python dependency PRs could not touch it. Both npm
+  # manifests are listed explicitly — "/" is currently a scripts-only
+  # delegator with no dependencies, but leaving it unlisted is how the
+  # dashboard went unwatched in the first place.
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/dashboard"
+    schedule:
+      interval: "weekly"
