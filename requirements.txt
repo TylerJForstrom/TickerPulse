@@ -3,7 +3,7 @@
 # and are only installed in the GitHub Actions worker.
 requests>=2.31
 pandas>=2.1
-numpy>=1.26
+numpy>=2.5.1
 scikit-learn>=1.9.0
 python-dotenv>=1.2.2
 yfinance>=1.5.2
