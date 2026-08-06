@@ -50,9 +50,11 @@ def drain_pages(
         if not page or min(ts(item) for item in page) <= horizon:
             return items  # window covered or source exhausted
         if pages_used >= max_pages:
-            print(f"  [saturation] {label}: {max_pages}-page budget spent with every "
-                  f"item still inside the {lookback_hours}h lookback — listing deeper "
-                  f"than budget, older posts may be missed")
+            print(
+                f"  [saturation] {label}: {max_pages}-page budget spent with every "
+                f"item still inside the {lookback_hours}h lookback — listing deeper "
+                f"than budget, older posts may be missed"
+            )
             return items
     return items
 

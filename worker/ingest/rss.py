@@ -35,6 +35,7 @@ class RSSAdapter(Adapter):
     def available(self) -> bool:
         try:
             import feedparser  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -63,8 +64,12 @@ class RSSAdapter(Adapter):
                         platform="rss",
                         source=source,
                         author=source,
-                        text=title + (". " + entry.get("summary", "")[:300]
-                                      if entry.get("summary") else ""),
+                        text=title
+                        + (
+                            ". " + entry.get("summary", "")[:300]
+                            if entry.get("summary")
+                            else ""
+                        ),
                         timestamp=ts,
                         engagement=0,
                         url=entry.get("link", ""),

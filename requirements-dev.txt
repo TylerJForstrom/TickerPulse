@@ -1,0 +1,9 @@
+# Lint/type tooling, pinned so CI and a laptop agree.
+#
+# The pin is load-bearing, not hygiene: ruff's DEFAULT rule set is broad and
+# has changed between releases, so an unpinned `ruff check` would silently
+# move the CI gate — new rules would fail a build nobody changed, and dropped
+# rules would stop protecting. pyproject.toml selects rules explicitly for the
+# same reason; the pin keeps the formatter's output stable on top of that.
+ruff==0.16.1
+mypy==2.3.0

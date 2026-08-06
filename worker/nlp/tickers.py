@@ -27,9 +27,38 @@ BARE_RE = re.compile(r"\b([A-Z][A-Z.]{1,5})\b")
 # Dictionary tickers that double as English words / common abbreviations.
 # Bare-uppercase occurrences of these are ignored (cashtag or alias only).
 AMBIGUOUS = {
-    "NOW", "NET", "ARM", "ALL", "ANY", "F", "T", "C", "V", "MA", "MS", "GS",
-    "GE", "GM", "BA", "KO", "HD", "DIS", "TM", "MU", "SO", "PEP", "CAT",
-    "LINK", "PEPE", "GLD", "DASH", "SHOP", "SQ", "IT", "ON", "DOGE",
+    "NOW",
+    "NET",
+    "ARM",
+    "ALL",
+    "ANY",
+    "F",
+    "T",
+    "C",
+    "V",
+    "MA",
+    "MS",
+    "GS",
+    "GE",
+    "GM",
+    "BA",
+    "KO",
+    "HD",
+    "DIS",
+    "TM",
+    "MU",
+    "SO",
+    "PEP",
+    "CAT",
+    "LINK",
+    "PEPE",
+    "GLD",
+    "DASH",
+    "SHOP",
+    "SQ",
+    "IT",
+    "ON",
+    "DOGE",
 }
 
 
@@ -41,7 +70,11 @@ def load_dictionary() -> tuple[dict, set[str], list[tuple[str, str]]]:
     # (alias phrase, ticker), longest alias first so "palo alto networks"
     # wins over hypothetical shorter overlaps.
     aliases = sorted(
-        ((alias, sym) for sym, info in tickers.items() for alias in info.get("aliases", [])),
+        (
+            (alias, sym)
+            for sym, info in tickers.items()
+            for alias in info.get("aliases", [])
+        ),
         key=lambda pair: -len(pair[0]),
     )
     return tickers, blocklist, aliases

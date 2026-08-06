@@ -19,12 +19,20 @@ from worker.models import Post
 
 PDS = "https://bsky.social/xrpc"
 QUERIES = [
-    "stock market", "stocks earnings", "$SPY", "$NVDA", "$TSLA", "$BTC",
-    "fed rate cut", "short squeeze", "bull market", "bitcoin etf",
+    "stock market",
+    "stocks earnings",
+    "$SPY",
+    "$NVDA",
+    "$TSLA",
+    "$BTC",
+    "fed rate cut",
+    "short squeeze",
+    "bull market",
+    "bitcoin etf",
 ]
 
-PAGE_LIMIT = 100   # searchPosts max per page
-MAX_PAGES = 3      # 300 posts of depth per query; 10 queries = ≤30 requests
+PAGE_LIMIT = 100  # searchPosts max per page
+MAX_PAGES = 3  # 300 posts of depth per query; 10 queries = ≤30 requests
 
 
 class BlueskyAdapter(Adapter):
@@ -36,8 +44,10 @@ class BlueskyAdapter(Adapter):
     def _session(self) -> dict:
         resp = requests.post(
             f"{PDS}/com.atproto.server.createSession",
-            json={"identifier": settings.bluesky_handle,
-                  "password": settings.bluesky_app_password},
+            json={
+                "identifier": settings.bluesky_handle,
+                "password": settings.bluesky_app_password,
+            },
             timeout=30,
         )
         resp.raise_for_status()
@@ -75,7 +85,9 @@ class BlueskyAdapter(Adapter):
                 params["cursor"] = cursor
             resp = requests.get(
                 f"{PDS}/app.bsky.feed.searchPosts",
-                params=params, headers=headers, timeout=30,
+                params=params,
+                headers=headers,
+                timeout=30,
             )
             if resp.status_code != 200:
                 print(f"  bluesky '{q}': HTTP {resp.status_code}")

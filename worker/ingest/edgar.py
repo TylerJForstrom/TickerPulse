@@ -21,8 +21,10 @@ import requests
 from worker.ingest.base import Adapter
 from worker.models import Post
 
-FEED = ("https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent"
-        "&type={form}&company=&dateb=&owner=include&count=40&output=atom")
+FEED = (
+    "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent"
+    "&type={form}&company=&dateb=&owner=include&count=40&output=atom"
+)
 FORMS = {
     "8-K": "filed an 8-K (material corporate event)",
     "4": "reported an insider transaction (Form 4)",
@@ -60,10 +62,15 @@ class EdgarAdapter(Adapter):
                     company = _clean_title(title)
                     if entry.get("updated_parsed"):
                         from time import mktime
-                        ts = datetime.fromtimestamp(mktime(entry.updated_parsed), tz=timezone.utc)
+
+                        ts = datetime.fromtimestamp(
+                            mktime(entry.updated_parsed), tz=timezone.utc
+                        )
                     else:
                         ts = datetime.now(timezone.utc)
-                    uid = hashlib.sha1((entry.get("id") or title).encode()).hexdigest()[:16]
+                    uid = hashlib.sha1((entry.get("id") or title).encode()).hexdigest()[
+                        :16
+                    ]
                     yield Post(
                         id=f"sec:{uid}",
                         platform="sec",

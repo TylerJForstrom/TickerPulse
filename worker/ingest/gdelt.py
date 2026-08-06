@@ -20,7 +20,7 @@ QUERIES = [
     '"stock market" sourcelang:eng',
     '"earnings report" sourcelang:eng',
     '"federal reserve" sourcelang:eng',
-    'bitcoin price sourcelang:eng',
+    "bitcoin price sourcelang:eng",
 ]
 HEADERS = {"User-Agent": "TickerPulse/1.0 (research project)"}
 
@@ -44,10 +44,19 @@ class GdeltAdapter(Adapter):
             if i:
                 time.sleep(8)  # GDELT free tier ~1 request / 5s per IP; be generous
             try:
-                resp = requests.get(API, params={
-                    "query": q, "mode": "artlist", "format": "json",
-                    "maxrecords": 40, "timespan": "1d", "sort": "datedesc",
-                }, headers=HEADERS, timeout=30)
+                resp = requests.get(
+                    API,
+                    params={
+                        "query": q,
+                        "mode": "artlist",
+                        "format": "json",
+                        "maxrecords": 40,
+                        "timespan": "1d",
+                        "sort": "datedesc",
+                    },
+                    headers=HEADERS,
+                    timeout=30,
+                )
                 if resp.status_code != 200:
                     print(f"  gdelt '{q[:20]}': HTTP {resp.status_code}")
                     continue

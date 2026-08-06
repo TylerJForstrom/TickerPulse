@@ -1,4 +1,5 @@
 """Quick RSS feed health check: python -m worker.check_feeds"""
+
 from worker.ingest.rss import FEEDS
 import feedparser
 

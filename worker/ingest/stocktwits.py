@@ -41,12 +41,15 @@ class StockTwitsAdapter(Adapter):
             return
         for sym in symbols:
             try:
-                resp = requests.get(f"{API}/streams/symbol/{sym}.json",
-                                    headers=HEADERS, timeout=30)
+                resp = requests.get(
+                    f"{API}/streams/symbol/{sym}.json", headers=HEADERS, timeout=30
+                )
                 if resp.status_code != 200:
                     continue
                 for msg in resp.json().get("messages", []):
-                    st_sent = ((msg.get("entities") or {}).get("sentiment") or {}).get("basic")
+                    st_sent = ((msg.get("entities") or {}).get("sentiment") or {}).get(
+                        "basic"
+                    )
                     yield Post(
                         id=f"stocktwits:{msg['id']}",
                         platform="stocktwits",
@@ -58,7 +61,7 @@ class StockTwitsAdapter(Adapter):
                         ).replace(tzinfo=timezone.utc),
                         engagement=int((msg.get("likes") or {}).get("total", 0)),
                         tickers=[s["symbol"] for s in msg.get("symbols", [])],
-                        url=f"https://stocktwits.com/{(msg.get('user') or {}).get('username','')}/message/{msg['id']}",
+                        url=f"https://stocktwits.com/{(msg.get('user') or {}).get('username', '')}/message/{msg['id']}",
                         sentiment=ST_SENTIMENT.get(st_sent),
                     )
             except Exception as exc:

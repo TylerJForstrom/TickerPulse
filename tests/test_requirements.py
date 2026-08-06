@@ -23,7 +23,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 # Files pip is pointed at somewhere in the repo (CI, the pipeline workflow, README).
 # Keep this assertion honest: if a new requirements file is added, discovery picks it
 # up automatically and test_expected_files_discovered fails only if one goes missing.
-EXPECTED = {"requirements.txt", "requirements-ml.txt"}
+EXPECTED = {"requirements.txt", "requirements-ml.txt", "requirements-dev.txt"}
 
 
 def requirements_files():

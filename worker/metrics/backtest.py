@@ -18,10 +18,10 @@ from datetime import datetime, timedelta, timezone
 from worker.metrics.trends import compute_ticker_trends
 from worker.models import Post
 
-HORIZONS = (4, 24, 48)            # hours ahead to measure
-BREAKOUT_FLOOR = 1.5              # flag quality bar for an event
-MAX_CANDLE_GAP_H = 30.0           # tolerate weekends/closed market when
-                                  # matching an as-of time to a candle
+HORIZONS = (4, 24, 48)  # hours ahead to measure
+BREAKOUT_FLOOR = 1.5  # flag quality bar for an event
+MAX_CANDLE_GAP_H = 30.0  # tolerate weekends/closed market when
+# matching an as-of time to a candle
 
 
 def _parse_ts(iso: str) -> datetime:
@@ -73,26 +73,32 @@ def replay_flags(
             day_key = (as_of - timedelta(hours=0)).strftime("%Y-%m-%d")
             recent = any(
                 e["ticker"] == ticker
-                and abs((_parse_ts(e["flagged_at"]) - as_of).total_seconds()) < 24 * 3600
+                and abs((_parse_ts(e["flagged_at"]) - as_of).total_seconds())
+                < 24 * 3600
                 for e in events
             )
             if recent or (ticker, day_key) in seen:
                 continue
             seen.add((ticker, day_key))
-            events.append({
-                "ticker": ticker,
-                "name": m["name"],
-                "flagged_at": as_of.isoformat(),
-                "breakout_score": m["breakout_score"],
-                "mentions": m["mentions"],
-                "sentiment_avg": m["sentiment_avg"],
-                "bull_bear_ratio": m["bull_bear_ratio"],
-            })
+            events.append(
+                {
+                    "ticker": ticker,
+                    "name": m["name"],
+                    "flagged_at": as_of.isoformat(),
+                    "breakout_score": m["breakout_score"],
+                    "mentions": m["mentions"],
+                    "sentiment_avg": m["sentiment_avg"],
+                    "bull_bear_ratio": m["bull_bear_ratio"],
+                }
+            )
     return events
 
 
-def score_events(events: list[dict], prices_by_ticker: dict[str, list[dict]],
-                 horizons: tuple[int, ...] = HORIZONS) -> None:
+def score_events(
+    events: list[dict],
+    prices_by_ticker: dict[str, list[dict]],
+    horizons: tuple[int, ...] = HORIZONS,
+) -> None:
     """Attach forward returns (in %) per horizon; None when prices missing
     or the horizon hasn't elapsed yet."""
     for e in events:
@@ -105,7 +111,9 @@ def score_events(events: list[dict], prices_by_ticker: dict[str, list[dict]],
             if base:
                 target = t0 + timedelta(hours=h)
                 last_ts = _parse_ts(prices[-1]["ts"]) if prices else None
-                if last_ts and last_ts >= target - timedelta(hours=MAX_CANDLE_GAP_H / 2):
+                if last_ts and last_ts >= target - timedelta(
+                    hours=MAX_CANDLE_GAP_H / 2
+                ):
                     fwd = _close_at(prices, target)
                     if fwd is not None:
                         ret = round((fwd / base - 1) * 100, 3)
@@ -115,31 +123,47 @@ def score_events(events: list[dict], prices_by_ticker: dict[str, list[dict]],
 def summarize(events: list[dict], horizons: tuple[int, ...] = HORIZONS) -> dict:
     summary = {"events": len(events), "horizons": {}}
     for h in horizons:
-        rets = [e["returns"][str(h)] for e in events if e["returns"].get(str(h)) is not None]
+        rets = [
+            e["returns"][str(h)] for e in events if e["returns"].get(str(h)) is not None
+        ]
         # Exactly-zero returns are market-closed artifacts (the close was
         # carried forward over a shut session), not real outcomes — exclude
         # them from the win rate instead of counting them as losses.
         moved = [r for r in rets if abs(r) > 1e-9]
         if not rets:
-            summary["horizons"][str(h)] = {"n": 0, "flat": 0, "win_rate": None,
-                                           "avg": None, "median": None}
+            summary["horizons"][str(h)] = {
+                "n": 0,
+                "flat": 0,
+                "win_rate": None,
+                "avg": None,
+                "median": None,
+            }
             continue
         rets_sorted = sorted(rets)
         mid = len(rets_sorted) // 2
-        median = (rets_sorted[mid] if len(rets_sorted) % 2
-                  else (rets_sorted[mid - 1] + rets_sorted[mid]) / 2)
+        median = (
+            rets_sorted[mid]
+            if len(rets_sorted) % 2
+            else (rets_sorted[mid - 1] + rets_sorted[mid]) / 2
+        )
         summary["horizons"][str(h)] = {
             "n": len(rets),
             "flat": len(rets) - len(moved),
-            "win_rate": round(sum(1 for r in moved if r > 0) / len(moved), 3) if moved else None,
+            "win_rate": round(sum(1 for r in moved if r > 0) / len(moved), 3)
+            if moved
+            else None,
             "avg": round(sum(rets) / len(rets), 3),
             "median": round(median, 3),
         }
     return summary
 
 
-def run_backtest(posts: list[Post], prices_by_ticker: dict[str, list[dict]],
-                 window_hours: int = 24, now: datetime | None = None) -> dict:
+def run_backtest(
+    posts: list[Post],
+    prices_by_ticker: dict[str, list[dict]],
+    window_hours: int = 24,
+    now: datetime | None = None,
+) -> dict:
     events = replay_flags(posts, window_hours=window_hours, now=now)
     score_events(events, prices_by_ticker)
     events.sort(key=lambda e: e["flagged_at"], reverse=True)

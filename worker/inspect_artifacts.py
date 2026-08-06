@@ -1,4 +1,5 @@
 """Quick artifact sanity check: python -m worker.inspect_artifacts"""
+
 import json
 from pathlib import Path
 
@@ -7,9 +8,11 @@ base = Path(__file__).parent.parent / "dashboard" / "public" / "data"
 t = json.load(open(base / "trending.json"))
 print("mood:", t["mood"])
 for m in t["tickers"][:8]:
-    print(f"{m['ticker']:6} mentions={m['mentions']:4} prev={m['mentions_prev']:4} "
-          f"vel={m['velocity']:+.2f} brk={m['breakout_score']:+.2f} "
-          f"phase={m['phase']:9} bb={m['bull_bear_ratio']:.2f} sent={m['sentiment_avg']:+.2f}")
+    print(
+        f"{m['ticker']:6} mentions={m['mentions']:4} prev={m['mentions_prev']:4} "
+        f"vel={m['velocity']:+.2f} brk={m['breakout_score']:+.2f} "
+        f"phase={m['phase']:9} bb={m['bull_bear_ratio']:.2f} sent={m['sentiment_avg']:+.2f}"
+    )
 
 n = json.load(open(base / "tickers" / "NVDA.json"))
 print("\nNVDA readout:", n["correlation"]["readout"])

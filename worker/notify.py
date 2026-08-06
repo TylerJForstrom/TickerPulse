@@ -21,8 +21,11 @@ def alert_key(a: dict) -> str:
     return f"{a['ticker']}:{a['kind']}"
 
 
-def send_discord_alerts(alerts: list[dict], previous_alerts: list[dict],
-                        dashboard_url: str = "https://tickerpulse-demo.netlify.app") -> int:
+def send_discord_alerts(
+    alerts: list[dict],
+    previous_alerts: list[dict],
+    dashboard_url: str = "https://tickerpulse-demo.netlify.app",
+) -> int:
     """Returns the number of alerts sent (0 when unconfigured or nothing new)."""
     webhook = os.getenv("DISCORD_WEBHOOK_URL", "")
     if not webhook or not alerts:
@@ -40,13 +43,15 @@ def send_discord_alerts(alerts: list[dict], previous_alerts: list[dict],
     ]
     payload = {
         "username": "TickerPulse",
-        "embeds": [{
-            "title": "Unusual social activity",
-            "description": "\n".join(lines),
-            "url": dashboard_url,
-            "color": 0x60A5FA,
-            "footer": {"text": "TickerPulse · not financial advice"},
-        }],
+        "embeds": [
+            {
+                "title": "Unusual social activity",
+                "description": "\n".join(lines),
+                "url": dashboard_url,
+                "color": 0x60A5FA,
+                "footer": {"text": "TickerPulse · not financial advice"},
+            }
+        ],
     }
     try:
         resp = requests.post(webhook, json=payload, timeout=20)

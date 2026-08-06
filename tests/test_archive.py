@@ -4,12 +4,17 @@ import datetime as dt
 import gzip
 import json
 
-from worker.sinks.archive import export_author_daily, export_buckets, export_trends_snapshot
+from worker.sinks.archive import (
+    export_author_daily,
+    export_buckets,
+    export_trends_snapshot,
+)
 
 
 def read_gz_lines(path):
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         return [line.strip() for line in fh if line.strip()]
+
 
 TODAY = dt.date(2026, 7, 28)
 
@@ -43,7 +48,9 @@ def test_existing_files_never_rewritten(tmp_path):
     export_buckets(rows, str(tmp_path), today=TODAY)
     path = tmp_path / "ticker_buckets" / "2026-07-26.jsonl.gz"
     before = path.read_bytes()
-    export_buckets([bucket("AAPL", "2026-07-26", 14, mentions=999)], str(tmp_path), today=TODAY)
+    export_buckets(
+        [bucket("AAPL", "2026-07-26", 14, mentions=999)], str(tmp_path), today=TODAY
+    )
     assert path.read_bytes() == before  # first archive of a day is final
 
 
@@ -62,8 +69,11 @@ def test_aligned_bucket_series_boundaries_are_stable_across_runs():
 
 def author_row(day_str, hour=12, author="bob", tickers=("XYZ",), score=0.5):
     return {
-        "platform": "reddit", "author": author, "tickers": list(tickers),
-        "sentiment": "bull", "sentiment_score": score,
+        "platform": "reddit",
+        "author": author,
+        "tickers": list(tickers),
+        "sentiment": "bull",
+        "sentiment_score": score,
         "created_at": dt.datetime.fromisoformat(f"{day_str}T{hour:02d}:00:00+00:00"),
     }
 
@@ -80,7 +90,9 @@ def test_author_daily_existing_files_never_rewritten(tmp_path):
 
 
 def test_author_daily_output_is_byte_deterministic(tmp_path):
-    rows = [author_row("2026-07-26", author=a, tickers=("XYZ", "ABC")) for a in ("z", "a")]
+    rows = [
+        author_row("2026-07-26", author=a, tickers=("XYZ", "ABC")) for a in ("z", "a")
+    ]
     export_author_daily(rows, str(tmp_path / "one"), today=TODAY)
     export_author_daily(list(reversed(rows)), str(tmp_path / "two"), today=TODAY)
     p = "author_daily/2026-07-26.jsonl.gz"
@@ -88,7 +100,9 @@ def test_author_daily_output_is_byte_deterministic(tmp_path):
 
 
 def test_trends_snapshot_first_run_of_day_wins(tmp_path):
-    count = export_trends_snapshot([{"ticker": "AAPL", "mentions": 10}], str(tmp_path), today=TODAY)
+    count = export_trends_snapshot(
+        [{"ticker": "AAPL", "mentions": 10}], str(tmp_path), today=TODAY
+    )
     assert count == 1
     second = export_trends_snapshot(
         [{"ticker": "AAPL", "mentions": 22}, {"ticker": "NVDA", "mentions": 8}],

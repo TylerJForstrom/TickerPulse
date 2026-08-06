@@ -37,11 +37,15 @@ def _write_jsonl_gz(path: str, rows: list[dict]) -> None:
     # re-archiving after a partial failure can never produce a spurious diff.
     with gzip.GzipFile(tmp, "wb", mtime=0) as fh:
         for row in rows:
-            fh.write((json.dumps(row, sort_keys=True, default=str) + "\n").encode("utf-8"))
+            fh.write(
+                (json.dumps(row, sort_keys=True, default=str) + "\n").encode("utf-8")
+            )
     os.replace(tmp, path)
 
 
-def export_buckets(rows: list[dict], out_dir: str, today: dt.date | None = None) -> dict[str, int]:
+def export_buckets(
+    rows: list[dict], out_dir: str, today: dt.date | None = None
+) -> dict[str, int]:
     """Write completed past days that have no archive file yet. Pure: rows in,
     files out. Today's partial day is skipped (it gets archived tomorrow)."""
     today = today or dt.datetime.now(dt.UTC).date()
@@ -51,7 +55,9 @@ def export_buckets(rows: list[dict], out_dir: str, today: dt.date | None = None)
     for row in rows:
         start = row["bucket_start"]
         day = (
-            start if isinstance(start, dt.datetime) else dt.datetime.fromisoformat(str(start))
+            start
+            if isinstance(start, dt.datetime)
+            else dt.datetime.fromisoformat(str(start))
         ).date()
         if day >= today:
             continue
@@ -67,7 +73,9 @@ def export_buckets(rows: list[dict], out_dir: str, today: dt.date | None = None)
     return written
 
 
-def export_trends_snapshot(rows: list[dict], out_dir: str, today: dt.date | None = None) -> int:
+def export_trends_snapshot(
+    rows: list[dict], out_dir: str, today: dt.date | None = None
+) -> int:
     """Write one trends sample per day (first run of the day wins). On the
     ephemeral Actions runner, only committed files persist — a same-day
     overwrite would never survive to the next run anyway, so the first
@@ -91,7 +99,9 @@ def author_hash(platform: str, author: str) -> str:
     return hashlib.sha256(f"{platform}:{author}".encode("utf-8")).hexdigest()[:16]
 
 
-def export_author_daily(rows: list[dict], out_dir: str, today: dt.date | None = None) -> dict[str, int]:
+def export_author_daily(
+    rows: list[dict], out_dir: str, today: dt.date | None = None
+) -> dict[str, int]:
     """Aggregate posts into per-(author_hash, ticker, day) stance rows and
     write completed past days that have no archive file yet — the raw
     material for author track-record weighting once months accrue. Pure:
@@ -113,11 +123,20 @@ def export_author_daily(rows: list[dict], out_dir: str, today: dt.date | None = 
         hashed = author_hash(row["platform"], row["author"])
         for ticker in row.get("tickers") or []:
             key = (day, hashed, row["platform"], ticker)
-            agg = aggs.setdefault(key, {
-                "author": hashed, "platform": row["platform"], "ticker": ticker,
-                "posts": 0, "bull": 0, "bear": 0, "neutral": 0,
-                "_score_sum": 0.0, "_score_n": 0,
-            })
+            agg = aggs.setdefault(
+                key,
+                {
+                    "author": hashed,
+                    "platform": row["platform"],
+                    "ticker": ticker,
+                    "posts": 0,
+                    "bull": 0,
+                    "bear": 0,
+                    "neutral": 0,
+                    "_score_sum": 0.0,
+                    "_score_n": 0,
+                },
+            )
             agg["posts"] += 1
             sentiment = row.get("sentiment")
             if sentiment in ("bull", "bear", "neutral"):

@@ -1,4 +1,5 @@
 """Smoke-test keyless adapters: python -m worker.check_adapters"""
+
 from worker.ingest.edgar import EdgarAdapter
 from worker.ingest.gdelt import GdeltAdapter
 from worker.ingest.mastodon import MastodonAdapter
