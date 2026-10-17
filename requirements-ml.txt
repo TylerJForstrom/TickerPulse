@@ -7,6 +7,6 @@
 # from the index above are versioned `2.13.0+cpu`, and a local label sorts
 # ABOVE its base version, so `>=2.13.0` accepts them. See tests/test_requirements.py.
 torch>=2.13.0
-transformers>=4.40
+transformers>=5.14.1
 sentence-transformers>=2.7
 umap-learn>=0.5.5
